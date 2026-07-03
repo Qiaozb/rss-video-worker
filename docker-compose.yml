@@ -1,0 +1,24 @@
+services:
+  video-worker:
+    build: .
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    environment:
+      MYSQL_HOST: host.docker.internal
+      MYSQL_PORT: "3306"
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: dify_test
+
+      TTS_BASE_URL: http://host.docker.internal:9880
+      TTS_VOICE: Serena
+
+      OUTPUT_DIR: /data/output
+      VIDEO_WIDTH: "1920"
+      VIDEO_HEIGHT: "1080"
+      VIDEO_FPS: "30"
+    volumes:
+      - ./output:/data/output
+      - ./remotion/public/generated:/app/remotion/public/generated

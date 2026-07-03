@@ -1,0 +1,1091 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>通用 RSS 采集平台</title>
+    <link rel="stylesheet" href="/console/styles.css?v=20260702-filter-pills" />
+  </head>
+  <body>
+    <a href="#main-content" class="skip-link">跳转到主内容</a>
+
+    <!-- ===== 登录/首页 ===== -->
+    <div id="view-landing" class="landing-page">
+      <div class="landing-bg" aria-hidden="true"></div>
+
+      <div class="landing-header">
+        <div class="landing-brand">
+          <svg class="landing-logo" viewBox="0 0 32 32" width="32" height="32" fill="none" aria-hidden="true">
+            <rect x="2" y="2" width="28" height="28" rx="6" stroke="currentColor" stroke-width="2" />
+            <path d="M10 12h12M10 16h10M10 20h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            <circle cx="24" cy="24" r="6" fill="var(--accent)" stroke="var(--accent)" stroke-width="2" />
+            <path d="M22.5 24l1 1 2-2.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span class="landing-brand-text">通用 RSS 采集平台</span>
+        </div>
+        <div class="landing-status">
+          <span class="topbar-badge" id="landing-health-badge">
+            <svg class="topbar-badge-icon" viewBox="0 0 8 8" width="8" height="8" aria-hidden="true">
+              <circle cx="4" cy="4" r="4" fill="currentColor" />
+            </svg>
+            <span id="landing-health-text">检查服务中</span>
+          </span>
+        </div>
+      </div>
+
+      <main class="landing-main">
+        <div class="landing-hero">
+          <div class="landing-hero-badge">RSS 自动采集 · LLM 分析 · 视频渲染</div>
+          <h1 class="landing-hero-title">通用 RSS 采集平台</h1>
+          <p class="landing-hero-sub">多源 RSS 自动采集，LLM 智能筛选摘要，自动化视频播报生成</p>
+        </div>
+
+        <div class="landing-split">
+          <div class="landing-features">
+            <div class="landing-card">
+              <svg class="landing-card-icon" viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5z" />
+                <path d="M3 10h14" />
+                <path d="M10 3v14" />
+              </svg>
+              <div>
+                <strong>多源 RSS 采集</strong>
+                <span>支持自定义 RSS 源，定时自动抓取，失败重试</span>
+              </div>
+            </div>
+            <div class="landing-card">
+              <svg class="landing-card-icon" viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16z" />
+                <path d="M10 6v4l2.5 2.5" />
+              </svg>
+              <div>
+                <strong>LLM 智能分析</strong>
+                <span>大模型筛选摘要，自动生成口播稿和每日趋势</span>
+              </div>
+            </div>
+            <div class="landing-card">
+              <svg class="landing-card-icon" viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M15 10l4 4-4 4" />
+                <path d="M5 10l-4 4 4 4" />
+                <path d="M10 2l-4 16" />
+              </svg>
+              <div>
+                <strong>自动视频生成</strong>
+                <span>合成语音 + 字幕 + 画面，一键产出每日播报视频</span>
+              </div>
+            </div>
+            <div class="landing-card">
+              <svg class="landing-card-icon" viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M2 10a8 8 0 0 1 16 0v0a8 8 0 0 1-16 0z" />
+                <path d="M2 10h16" />
+                <path d="M10 2a6 6 0 0 1 6 6v4a6 6 0 0 1-6 6" />
+                <path d="M10 2a6 6 0 0 0-6 6v4a6 6 0 0 0 6 6" />
+              </svg>
+              <div>
+                <strong>任务编排调度</strong>
+                <span>Cron 定时执行，Pipeline 多步骤编排，实时进度追踪</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="landing-login-col">
+            <div class="landing-login-card">
+              <h2 class="landing-login-title">登录控制台</h2>
+              <p class="landing-login-desc">请输入管理员账号</p>
+              <div class="landing-login-form" data-glass="login"></div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <footer class="landing-footer">
+        <span>通用 RSS 采集平台</span>
+        <span class="landing-footer-muted">RSS 采集 · LLM 分析 · 视频渲染</span>
+        <span id="landing-footer-version" class="landing-footer-muted"></span>
+      </footer>
+    </div>
+
+    <!-- ===== 控制台（登录后可见） ===== -->
+    <div id="app-shell" class="app-shell hidden">
+    <header class="topbar">
+      <div>
+        <h1>通用 RSS 采集平台</h1>
+        <p>RSS 采集 · 定时计划 · Pipeline 任务 · 视频生成</p>
+      </div>
+      <div class="top-actions" data-glass="topbar"></div>
+    </header>
+
+    <nav class="tabs" aria-label="控制台模块">
+      <button class="tab active" data-tab="overview" type="button">概览</button>
+      <button class="tab" data-tab="rss" type="button">RSS 源</button>
+      <button class="tab" data-tab="models" type="button">模型配置</button>
+      <button class="tab" data-tab="prompts" type="button">提示词</button>
+      <button class="tab" data-tab="schedules" type="button">定时计划</button>
+      <button class="tab" data-tab="reports" type="button">报告管理</button>
+      <button class="tab" data-tab="videos" type="button">视频管理</button>
+      <button class="tab" data-tab="tts-voices" type="button">语音管理</button>
+      <button class="tab" data-tab="runs" type="button">任务中心</button>
+      <button class="tab" data-tab="llm-logs" type="button">模型日志</button>
+      <button class="tab" data-tab="maintenance" type="button">维护</button>
+      <button class="tab" data-requires-admin="true" data-tab="security" type="button">权限</button>
+    </nav>
+
+    <main id="main-content">
+      <section class="view active" id="view-overview">
+        <div class="metrics">
+          <div class="metric">
+            <span>RSS 源</span>
+            <strong id="metric-rss">-</strong>
+          </div>
+          <div class="metric">
+            <span>定时计划</span>
+            <strong id="metric-schedules">-</strong>
+          </div>
+          <div class="metric">
+            <span>最近任务</span>
+            <strong id="metric-runs">-</strong>
+          </div>
+          <div class="metric">
+            <span>运行中</span>
+            <strong id="metric-running">-</strong>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button id="btn-collect" type="button">采集 RSS</button>
+          <button id="btn-analyze" type="button">采集并分析</button>
+          <button id="btn-render-latest" type="button">渲染最新报告</button>
+        </div>
+
+        <details class="overview-run-form" id="overview-run-form-details">
+          <summary>自定义分析任务</summary>
+          <form class="form-grid overview-form-grid" id="overview-run-form">
+            <label>
+              任务类型
+              <select name="task_type">
+                <option value="rss_analyze">仅分析</option>
+                <option value="collect_and_analyze">采集并分析</option>
+                <option value="daily_report" selected>日报生成（含渲染）</option>
+              </select>
+            </label>
+            <label>
+              RSS 分类
+              <input name="rss_category" list="rss-category-options" placeholder="留空表示全部" />
+            </label>
+            <label>
+              模型配置
+              <select name="model_config_id">
+                <option value="">默认</option>
+              </select>
+            </label>
+            <label>
+              提示词版本
+              <select name="prompt_version_id">
+                <option value="">默认</option>
+              </select>
+            </label>
+            <label>
+              TTS 配置
+              <select name="tts_config_id">
+                <option value="">默认</option>
+              </select>
+            </label>
+            <label>
+              报告类型
+              <input name="report_type" value="general" placeholder="general" />
+            </label>
+            <label>
+              时间范围（小时）
+              <input name="hours" type="number" value="24" min="1" max="168" />
+            </label>
+            <label>
+              候选数量上限
+              <input name="limit" type="number" value="120" min="1" max="500" />
+            </label>
+            <label class="checkline">
+              <input name="auto_render" type="checkbox" checked />
+              自动生成视频
+            </label>
+            <label class="checkline">
+              <input name="auto_publish" type="checkbox" />
+              自动发布
+            </label>
+            <button type="submit">手动运行</button>
+          </form>
+        </details>
+
+        <div class="notice" id="overview-output"></div>
+      </section>
+
+      <section class="view" id="view-rss">
+        <div class="section-head">
+          <h2>RSS 源</h2>
+          <div class="section-head-actions">
+            <button id="btn-add-rss" type="button">增加</button>
+            <button id="btn-refresh-rss" type="button">刷新</button>
+          </div>
+        </div>
+
+        <dialog id="rss-dialog" class="form-dialog">
+          <div class="dialog-head">
+            <h3 id="rss-dialog-title">增加 RSS 源</h3>
+            <button type="button" class="dialog-close" aria-label="关闭">&times;</button>
+          </div>
+          <form class="form-grid" id="rss-form">
+            <input name="id" type="hidden" />
+            <label>
+              名称
+              <input name="name" required placeholder="IT之家" />
+            </label>
+            <label>
+              URL
+              <input name="url" required placeholder="https://www.ithome.com/rss/" />
+            </label>
+            <label>
+              分类
+              <input name="category" placeholder="科技综合" />
+            </label>
+            <label>
+              优先级
+              <input name="priority" type="number" value="100" />
+            </label>
+            <label>
+              超时秒数
+              <input name="request_timeout_seconds" type="number" value="20" />
+            </label>
+            <label class="checkline">
+              <input name="enabled" type="checkbox" checked />
+              启用
+            </label>
+            <button type="submit">保存 RSS 源</button>
+            <button class="secondary hidden" id="btn-cancel-rss-edit" type="button">取消编辑</button>
+          </form>
+        </dialog>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">ID</th>
+                <th scope="col">名称</th>
+                <th scope="col">分类</th>
+                <th scope="col">URL</th>
+                <th scope="col">状态</th>
+                <th scope="col">最近成功</th>
+                <th scope="col">失败次数</th>
+                <th scope="col">操作</th>
+              </tr>
+            </thead>
+            <tbody id="rss-table"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="view" id="view-security">
+        <div class="section-head">
+          <h2>权限系统</h2>
+          <button id="btn-refresh-security" type="button">刷新</button>
+        </div>
+
+        <div class="split-grid">
+          <form class="form-grid" id="auth-user-form">
+            <h3>创建用户</h3>
+            <label>
+              用户名
+              <input name="username" required autocomplete="off" />
+            </label>
+            <label>
+              初始密码
+              <input name="password" required type="password" minlength="8" autocomplete="new-password" />
+            </label>
+            <label>
+              角色
+              <select name="role">
+                <option value="editor">editor</option>
+                <option value="viewer">viewer</option>
+                <option value="admin">admin</option>
+              </select>
+            </label>
+            <label class="checkline">
+              <input name="enabled" type="checkbox" checked />
+              启用
+            </label>
+            <button type="submit">创建用户</button>
+          </form>
+
+          <form class="form-grid" id="auth-password-form">
+            <h3>重置密码</h3>
+            <label>
+              用户 ID
+              <input name="user_id" required min="1" type="number" />
+            </label>
+            <label>
+              新密码
+              <input name="password" required type="password" minlength="8" autocomplete="new-password" />
+            </label>
+            <button type="submit">重置密码</button>
+          </form>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">ID</th>
+                <th scope="col">用户名</th>
+                <th scope="col">角色</th>
+                <th scope="col">启用</th>
+                <th scope="col">最近登录</th>
+                <th scope="col">操作</th>
+              </tr>
+            </thead>
+            <tbody id="auth-users-table"></tbody>
+          </table>
+        </div>
+
+        <div class="section-head compact-head">
+          <h3>审计日志</h3>
+          <button id="btn-refresh-audit" type="button">刷新日志</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">ID</th>
+                <th scope="col">时间</th>
+                <th scope="col">用户</th>
+                <th scope="col">角色</th>
+                <th scope="col">动作</th>
+                <th scope="col">接口</th>
+                <th scope="col">状态</th>
+                <th scope="col">说明</th>
+              </tr>
+            </thead>
+            <tbody id="audit-logs-table"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="view" id="view-schedules">
+        <div class="section-head">
+          <h2>定时计划</h2>
+          <div class="section-head-actions">
+            <button id="btn-add-schedule" type="button">增加</button>
+            <button id="btn-refresh-schedules" type="button">刷新</button>
+          </div>
+        </div>
+
+        <dialog id="schedule-dialog" class="form-dialog">
+          <div class="dialog-head">
+            <h3 id="schedule-dialog-title">增加定时计划</h3>
+            <button type="button" class="dialog-close" aria-label="关闭">&times;</button>
+          </div>
+          <form class="form-grid" id="schedule-form">
+            <input type="hidden" name="id" />
+            <label>
+              名称
+              <input name="name" required placeholder="每日 17 点生成日报" />
+            </label>
+            <label>
+              类型
+              <select name="task_type">
+                <option value="rss_collect">RSS 采集</option>
+                <option value="daily_report">日报生成</option>
+              </select>
+            </label>
+            <label>
+              Cron
+              <input name="cron_expression" required value="0 17 * * *" />
+            </label>
+            <label>
+              时区
+              <input name="timezone" required value="Asia/Shanghai" />
+            </label>
+            <label>
+              RSS 分类
+              <input name="rss_category" list="rss-category-options" placeholder="留空表示全部" />
+              <datalist id="rss-category-options"></datalist>
+            </label>
+            <label>
+              模型配置
+              <select name="model_config_id">
+                <option value="">默认</option>
+              </select>
+            </label>
+            <label>
+              提示词版本
+              <select name="prompt_version_id">
+                <option value="">默认</option>
+              </select>
+            </label>
+            <label>
+              TTS 配置
+              <select name="tts_config_id">
+                <option value="">默认</option>
+              </select>
+            </label>
+            <label>
+              报告类型
+              <input name="report_type" placeholder="general" value="general" />
+            </label>
+            <label class="checkline">
+              <input name="enabled" type="checkbox" checked />
+              启用
+            </label>
+            <label class="checkline">
+              <input name="prevent_overlap" type="checkbox" checked />
+              防重入
+            </label>
+            <label class="checkline">
+              <input name="auto_render" type="checkbox" checked />
+              自动生成视频
+            </label>
+            <label class="checkline">
+              <input name="auto_publish" type="checkbox" />
+              自动发布
+            </label>
+            <label>
+              最大运行秒数
+              <input name="max_runtime_seconds" type="number" value="3600" min="60" />
+            </label>
+            <label>
+              重试次数
+              <input name="retry_count" type="number" value="2" min="0" />
+            </label>
+            <label>
+              重试间隔秒
+              <input name="retry_interval_seconds" type="number" value="300" min="10" />
+            </label>
+            <button type="submit">保存计划</button>
+          </form>
+        </dialog>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">ID</th>
+                <th scope="col">名称</th>
+                <th scope="col">类型</th>
+                <th scope="col">Cron</th>
+                <th scope="col">RSS 分类</th>
+                <th scope="col">模型</th>
+                <th scope="col">提示词</th>
+                <th scope="col">TTS</th>
+                <th scope="col">报告类型</th>
+                <th scope="col">渲染/发布</th>
+                <th scope="col">启用</th>
+                <th scope="col">下次执行</th>
+                <th scope="col">操作</th>
+              </tr>
+            </thead>
+            <tbody id="schedule-table"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="view" id="view-models">
+        <div class="section-head">
+          <h2>模型配置</h2>
+          <div class="section-head-actions">
+            <button id="btn-add-model" type="button">增加</button>
+            <button id="btn-refresh-models" type="button">刷新</button>
+          </div>
+        </div>
+
+        <dialog id="model-dialog" class="form-dialog">
+          <div class="dialog-head">
+            <h3 id="model-dialog-title">增加模型配置</h3>
+            <button type="button" class="dialog-close" aria-label="关闭">&times;</button>
+          </div>
+          <form class="form-grid" id="model-form">
+            <input name="id" type="hidden" />
+            <label>
+              模型种类
+              <select name="model_type" id="model-type-select">
+                <option value="llm">LLM（大语言模型）</option>
+                <option value="tts">TTS（语音合成）</option>
+              </select>
+            </label>
+            <label>
+              名称
+              <input name="name" required placeholder="DeepSeek" />
+            </label>
+            <label>
+              Base URL
+              <input name="base_url" required placeholder="https://api.deepseek.com" />
+            </label>
+            <label class="field-model-name">
+              模型名称
+              <input name="model_name" placeholder="deepseek-chat / qwen3-tts" />
+            </label>
+            <label class="field-tts">
+              音色（Voice）
+              <input name="voice" placeholder="Serena" />
+            </label>
+            <label>
+              API Key
+              <input name="api_key" type="password" placeholder="留空表示不修改" />
+            </label>
+            <label class="field-llm">
+              超时秒数
+              <input name="timeout_seconds" type="number" value="180" />
+            </label>
+            <label class="field-llm">
+              Temperature
+              <input name="temperature" type="number" step="0.1" value="0.2" />
+            </label>
+            <label class="checkline">
+              <input name="enabled" type="checkbox" checked />
+              启用
+            </label>
+            <label class="checkline">
+              <input name="is_default" type="checkbox" checked />
+              默认
+            </label>
+            <button type="submit">保存模型</button>
+            <button type="button" id="btn-cancel-model-edit" class="hidden">取消编辑</button>
+          </form>
+        </dialog>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">ID</th>
+                <th scope="col">种类</th>
+                <th scope="col">名称</th>
+                <th scope="col">Base URL</th>
+                <th scope="col">模型/音色</th>
+                <th scope="col">Key</th>
+                <th scope="col">状态</th>
+                <th scope="col">默认</th>
+                <th scope="col">操作</th>
+              </tr>
+            </thead>
+            <tbody id="models-table"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="view" id="view-prompts">
+        <div class="section-head">
+          <h2>提示词版本</h2>
+          <div class="section-head-actions">
+            <button id="btn-add-prompt" type="button">增加</button>
+            <button id="btn-refresh-prompts" type="button">刷新</button>
+          </div>
+        </div>
+
+        <dialog id="prompt-dialog" class="form-dialog">
+          <div class="dialog-head">
+            <h3 id="prompt-dialog-title">增加提示词版本</h3>
+            <button type="button" class="dialog-close" aria-label="关闭">&times;</button>
+          </div>
+          <form class="prompt-form" id="prompt-form">
+            <input name="id" type="hidden" />
+            <div class="form-row">
+              <label>
+                名称
+                <input name="name" required placeholder="游戏新闻筛选提示词 v1" />
+              </label>
+              <label class="checkline">
+                <input name="enabled" type="checkbox" checked />
+                启用
+              </label>
+              <label class="checkline">
+                <input name="is_default" type="checkbox" checked />
+                默认
+              </label>
+              <button type="submit">保存提示词</button>
+            </div>
+            <label>
+              系统提示词
+              <textarea name="system_prompt" required rows="10"></textarea>
+            </label>
+            <label>
+              用户提示词模板
+              <textarea name="user_prompt_template" required rows="16"></textarea>
+            </label>
+            <p class="hint">用户提示词模板必须包含 <code>{markdown}</code>，运行时会替换成 RSS Markdown 候选列表。</p>
+          </form>
+        </dialog>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">ID</th>
+                <th scope="col">名称</th>
+                <th scope="col">启用</th>
+                <th scope="col">默认</th>
+                <th scope="col">更新时间</th>
+                <th scope="col">操作</th>
+              </tr>
+            </thead>
+            <tbody id="prompts-table"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="view" id="view-reports">
+        <div class="section-head">
+          <h2>报告管理</h2>
+          <button id="btn-refresh-reports" type="button">刷新</button>
+        </div>
+
+        <form class="filter-pill-form report-filter-form" id="report-filter-form">
+          <label>
+            <span>报告类型</span>
+            <select name="report_type">
+              <option value="">全部</option>
+            </select>
+          </label>
+          <label>
+            <span>RSS 分类</span>
+            <select name="rss_category">
+              <option value="">全部</option>
+            </select>
+          </label>
+          <label>
+            <span>模型</span>
+            <select name="model_config_id">
+              <option value="">全部</option>
+            </select>
+          </label>
+          <label>
+            <span>提示词</span>
+            <select name="prompt_version_id">
+              <option value="">全部</option>
+            </select>
+          </label>
+          <label>
+            <span>开始日期</span>
+            <input name="date_from" type="date" />
+          </label>
+          <label>
+            <span>结束日期</span>
+            <input name="date_to" type="date" />
+          </label>
+          <label>
+            <span>数量</span>
+            <input name="limit" min="1" max="200" type="number" value="50" />
+          </label>
+          <button type="submit">筛选</button>
+        </form>
+
+        <div class="split report-layout">
+          <div class="table-wrap reports-table-wrap">
+            <table class="reports-table">
+              <thead>
+                <tr>
+                  <th scope="col">报告</th>
+                  <th scope="col">配置</th>
+                  <th scope="col">内容</th>
+                  <th scope="col">视频</th>
+                  <th scope="col">发布</th>
+                  <th scope="col">操作</th>
+                </tr>
+              </thead>
+              <tbody id="reports-table"></tbody>
+            </table>
+          </div>
+
+          <aside class="report-detail">
+            <h3>报告详情</h3>
+            <div id="report-empty">选择一个报告查看新闻和口播稿。</div>
+            <div class="hidden" id="report-detail-content">
+              <div class="detail-actions" id="report-actions"></div>
+              <div class="report-meta" id="report-meta"></div>
+              <form class="news-edit-form hidden" id="news-edit-form">
+                <input name="id" type="hidden" />
+                <div class="form-row compact">
+                  <label>
+                    排序
+                    <input name="item_index" required type="number" min="1" />
+                  </label>
+                  <label>
+                    重要性
+                    <select name="importance">
+                      <option value="高">高</option>
+                      <option value="中">中</option>
+                      <option value="低">低</option>
+                    </select>
+                  </label>
+                  <label>
+                    发布时间
+                    <input name="pubdate" />
+                  </label>
+                </div>
+                <label>
+                  标题
+                  <input name="title" required />
+                </label>
+                <label>
+                  相关领域
+                  <input name="related_field" />
+                </label>
+                <label>
+                  摘要
+                  <textarea name="summary" rows="5"></textarea>
+                </label>
+                <label>
+                  口播稿
+                  <textarea name="voiceover_script" rows="7"></textarea>
+                </label>
+                <label>
+                  保留理由
+                  <textarea name="reserve_reason" rows="4"></textarea>
+                </label>
+                <label>
+                  原文链接
+                  <input name="link" />
+                </label>
+                <p class="hint">重要性改为“低”后，这条新闻会保留在报告中，但不会进入视频播报。</p>
+                <div class="detail-actions">
+                  <button type="submit">保存新闻</button>
+                  <button id="btn-cancel-news-edit" type="button">取消</button>
+                </div>
+              </form>
+              <div class="news-list" id="report-news-list"></div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="view" id="view-videos">
+        <div class="section-head">
+          <h2>成品资产管理</h2>
+          <button id="btn-refresh-videos" type="button">刷新</button>
+        </div>
+
+        <form class="filter-pill-form video-filter-form" id="video-filter-form">
+          <label>
+            <span>状态</span>
+            <select name="status">
+              <option value="">全部</option>
+              <option value="pending">pending</option>
+              <option value="rendering">rendering</option>
+              <option value="done">done</option>
+              <option value="failed">failed</option>
+              <option value="cancelled">cancelled</option>
+            </select>
+          </label>
+          <label>
+            <span>报告 ID</span>
+            <input name="report_id" min="1" type="number" />
+          </label>
+          <label>
+            <span>开始日期</span>
+            <input name="date_from" type="date" />
+          </label>
+          <label>
+            <span>结束日期</span>
+            <input name="date_to" type="date" />
+          </label>
+          <label>
+            <span>数量</span>
+            <input name="limit" min="1" max="200" type="number" value="50" />
+          </label>
+          <button type="submit">筛选</button>
+        </form>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">ID</th>
+                <th scope="col">报告</th>
+                <th scope="col">状态</th>
+                <th scope="col">进度</th>
+                <th scope="col">时长</th>
+                <th scope="col">文件</th>
+                <th scope="col">封面</th>
+                <th scope="col">更新时间</th>
+                <th scope="col">操作</th>
+              </tr>
+            </thead>
+            <tbody id="videos-table"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="view" id="view-tts-voices">
+        <div class="section-head">
+          <h2>语音管理</h2>
+          <button id="btn-refresh-tts-voices" type="button">刷新</button>
+        </div>
+
+        <form class="filter-pill-form voice-filter-form" id="tts-audio-filter-form">
+          <label>
+            <span>状态</span>
+            <select name="status">
+              <option value="">全部</option>
+              <option value="done">已生成</option>
+              <option value="pending">待生成</option>
+              <option value="processing">生成中</option>
+              <option value="failed">失败</option>
+            </select>
+          </label>
+          <label>
+            <span>报告 ID</span>
+            <input name="report_id" min="1" type="number" />
+          </label>
+          <label>
+            <span>开始日期</span>
+            <input name="date_from" type="date" />
+          </label>
+          <label>
+            <span>结束日期</span>
+            <input name="date_to" type="date" />
+          </label>
+          <label>
+            <span>数量</span>
+            <input name="limit" min="1" max="200" type="number" value="50" />
+          </label>
+          <button type="submit">筛选</button>
+        </form>
+
+        <div class="table-wrap">
+          <table class="tts-assets-table">
+            <thead>
+              <tr>
+                <th scope="col">语音内容</th>
+                <th scope="col">状态</th>
+                <th scope="col">音频</th>
+                <th scope="col">来源</th>
+                <th scope="col">更新时间</th>
+                <th scope="col">操作</th>
+              </tr>
+            </thead>
+            <tbody id="tts-voices-table"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="view" id="view-runs">
+        <div class="section-head">
+          <h2>任务中心</h2>
+          <button id="btn-refresh-runs" type="button">刷新</button>
+        </div>
+
+        <div class="split runs-layout">
+          <div class="table-wrap runs-table-wrap">
+            <table class="runs-table">
+              <thead>
+                <tr>
+                  <th scope="col">任务</th>
+                  <th scope="col">配置</th>
+                  <th scope="col">状态</th>
+                  <th scope="col">最近步骤</th>
+                  <th scope="col">报告</th>
+                  <th scope="col">操作</th>
+                </tr>
+              </thead>
+              <tbody id="runs-table"></tbody>
+            </table>
+          </div>
+
+          <aside class="events">
+            <h3>任务事件</h3>
+            <div id="events-empty">选择一个任务查看事件。</div>
+            <ol id="events-list"></ol>
+          </aside>
+        </div>
+      </section>
+
+      <section class="view" id="view-llm-logs">
+        <div class="section-head">
+          <h2>模型统计与调用日志</h2>
+          <div class="inline-actions">
+            <select id="llm-stats-days">
+              <option value="1">最近 1 天</option>
+              <option value="7" selected>最近 7 天</option>
+              <option value="30">最近 30 天</option>
+              <option value="90">最近 90 天</option>
+            </select>
+            <input id="llm-log-run-filter" min="1" placeholder="Pipeline ID" type="number" />
+            <button id="btn-clear-llm-log-filter" type="button">清除筛选</button>
+            <button id="btn-refresh-llm-logs" type="button">刷新</button>
+          </div>
+        </div>
+
+        <div class="maintenance-grid" id="llm-stats-cards"></div>
+
+        <div class="stats-grid">
+          <div>
+            <div class="section-head compact-head">
+              <h3>按模型</h3>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">模型</th>
+                    <th scope="col">调用</th>
+                    <th scope="col">成功率</th>
+                    <th scope="col">平均耗时</th>
+                    <th scope="col">Token</th>
+                    <th scope="col">修复</th>
+                  </tr>
+                </thead>
+                <tbody id="llm-stats-model-table"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-head compact-head">
+              <h3>按用途</h3>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">用途</th>
+                    <th scope="col">调用</th>
+                    <th scope="col">成功率</th>
+                    <th scope="col">平均耗时</th>
+                    <th scope="col">Token</th>
+                    <th scope="col">修复</th>
+                  </tr>
+                </thead>
+                <tbody id="llm-stats-purpose-table"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-head compact-head">
+          <h3>按天</h3>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">日期</th>
+                <th scope="col">调用</th>
+                <th scope="col">成功</th>
+                <th scope="col">失败</th>
+                <th scope="col">平均耗时</th>
+                <th scope="col">Token</th>
+                <th scope="col">修复</th>
+              </tr>
+            </thead>
+            <tbody id="llm-stats-day-table"></tbody>
+          </table>
+        </div>
+
+        <div class="section-head compact-head">
+          <h3>明细日志</h3>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">ID</th>
+                <th scope="col">任务</th>
+                <th scope="col">用途</th>
+                <th scope="col">模型</th>
+                <th scope="col">状态</th>
+                <th scope="col">耗时</th>
+                <th scope="col">Token</th>
+                <th scope="col">修复</th>
+                <th scope="col">时间</th>
+                <th scope="col">错误</th>
+              </tr>
+            </thead>
+            <tbody id="llm-logs-table"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="view" id="view-maintenance">
+        <div class="section-head">
+          <h2>本地维护</h2>
+          <button id="btn-refresh-maintenance" type="button">刷新</button>
+        </div>
+
+        <div class="maintenance-grid" id="maintenance-services"></div>
+
+        <div class="section-head compact-head">
+          <h3>目录占用</h3>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">目录</th>
+                <th scope="col">文件数</th>
+                <th scope="col">大小</th>
+                <th scope="col">最早修改</th>
+                <th scope="col">最近修改</th>
+                <th scope="col">路径</th>
+              </tr>
+            </thead>
+            <tbody id="maintenance-directories-table"></tbody>
+          </table>
+        </div>
+
+        <form class="form-grid maintenance-cleanup-form" id="maintenance-cleanup-form">
+          <label>
+            输出保留天数
+            <input name="output_retention_days" type="number" value="30" min="0" />
+          </label>
+          <label>
+            音频保留天数
+            <input name="audio_retention_days" type="number" value="14" min="0" />
+          </label>
+          <label>
+            缓存保留天数
+            <input name="cache_retention_days" type="number" value="7" min="0" />
+          </label>
+          <label class="checkline">
+            <input name="dry_run" type="checkbox" checked />
+            只预览
+          </label>
+          <button type="submit">执行清理</button>
+        </form>
+
+        <div class="notice" id="maintenance-output">先执行“只预览”，确认候选文件无误后再取消勾选执行清理。</div>
+      </section>
+    </main>
+
+    </div><!-- /app-shell -->
+
+    <div class="toast-stack" id="toast-stack" data-glass="toast" aria-live="polite" aria-atomic="false"></div>
+
+    <script type="module" src="/console/glass-island.js?v=20260629-glass"></script>
+    <script type="module" src="/console/app.js?v=20260702-tts-assets"></script>
+    <script>
+      // 点击涟漪特效：对按钮/标签类元素在按下点产生扩散圆。
+      // 通过事件委托挂载，无需逐个绑定；尊重 prefers-reduced-motion。
+      (function () {
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        var SELECTOR = "button, .tab, .link-button, .button-link";
+        document.addEventListener("pointerdown", function (event) {
+          var target = event.target.closest(SELECTOR);
+          if (!target) return;
+          // 链接式按钮无 overflow 容器，涟漪会溢出，跳过
+          if (target.classList.contains("button-link")) return;
+          if (target.classList.contains("link-button")) return;
+          var rect = target.getBoundingClientRect();
+          var size = Math.max(rect.width, rect.height);
+          var ripple = document.createElement("span");
+          ripple.className = "ripple";
+          ripple.style.width = ripple.style.height = size + "px";
+          ripple.style.left = (event.clientX - rect.left - size / 2) + "px";
+          ripple.style.top = (event.clientY - rect.top - size / 2) + "px";
+          // 确保宿主是定位上下文
+          if (getComputedStyle(target).position === "static") {
+            target.style.position = "relative";
+          }
+          target.appendChild(ripple);
+          ripple.addEventListener("animationend", function () {
+            ripple.remove();
+          });
+        }, { passive: true });
+      })();
+    </script>
+  </body>
+</html>

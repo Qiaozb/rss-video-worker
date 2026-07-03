@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.dify-rss.video-worker</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/qzzzzb_h/projects/codex/dify-rss/video-worker/.venv/bin/python</string>
+    <string>-m</string>
+    <string>uvicorn</string>
+    <string>app.main:app</string>
+    <string>--host</string>
+    <string>127.0.0.1</string>
+    <string>--port</string>
+    <string>8000</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/qzzzzb_h/projects/codex/dify-rss/video-worker</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <key>PYTHONUNBUFFERED</key>
+    <string>1</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ProcessType</key>
+  <string>Background</string>
+
+  <key>StandardOutPath</key>
+  <string>/Users/qzzzzb_h/projects/codex/dify-rss/video-worker/logs/video-worker.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/qzzzzb_h/projects/codex/dify-rss/video-worker/logs/video-worker-error.log</string>
+</dict>
+</plist>

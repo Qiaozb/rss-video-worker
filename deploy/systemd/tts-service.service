@@ -1,0 +1,21 @@
+[Unit]
+Description=Game Daily Local TTS Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=game-daily
+Group=game-daily
+WorkingDirectory=/opt/game-daily/tts-service
+EnvironmentFile=/opt/game-daily/tts-service/.env
+ExecStart=/opt/game-daily/tts-service/.venv/bin/uvicorn server:app --host 127.0.0.1 --port 9880
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=60
+StandardOutput=append:/var/log/game-daily/tts-service.log
+StandardError=append:/var/log/game-daily/tts-service-error.log
+
+[Install]
+WantedBy=multi-user.target

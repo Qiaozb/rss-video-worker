@@ -1,0 +1,21 @@
+[Unit]
+Description=Game Daily Video Worker
+After=network-online.target mysql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=game-daily
+Group=game-daily
+WorkingDirectory=/opt/game-daily/video-worker
+EnvironmentFile=/opt/game-daily/video-worker/.env
+ExecStart=/opt/game-daily/video-worker/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=60
+StandardOutput=append:/var/log/game-daily/video-worker.log
+StandardError=append:/var/log/game-daily/video-worker-error.log
+
+[Install]
+WantedBy=multi-user.target
