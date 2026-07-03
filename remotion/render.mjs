@@ -32,31 +32,38 @@ const browserExecutable = browserCandidates.find((candidate) =>
 );
 const browserOptions = browserExecutable ? {browserExecutable} : {};
 const concurrencySetting = process.env.REMOTION_CONCURRENCY || "2";
-const concurrency = /^\d+$/.test(concurrencySetting)
+const requestedConcurrency = /^\d+$/.test(concurrencySetting)
   ? Number(concurrencySetting)
   : concurrencySetting;
-const hardwareAcceleration =
+const maxConcurrencySetting = process.env.REMOTION_MAX_CONCURRENCY || "3";
+const maxConcurrency = /^\d+$/.test(maxConcurrencySetting)
+  ? Number(maxConcurrencySetting)
+  : 3;
+const concurrency =
+  typeof requestedConcurrency === "number"
+    ? Math.max(1, Math.min(requestedConcurrency, maxConcurrency))
+    : requestedConcurrency;
+const requestedHardwareAcceleration =
   process.env.REMOTION_HARDWARE_ACCELERATION || "disable";
-const remotionPort = process.env.REMOTION_PROXY_PORT
-  ? Number(process.env.REMOTION_PROXY_PORT)
-  : null;
+const hardwareAcceleration =
+  process.env.REMOTION_ALLOW_HARDWARE_ACCELERATION === "1"
+    ? requestedHardwareAcceleration
+    : "disable";
 
-if (!["disable", "if-possible", "required"].includes(hardwareAcceleration)) {
+if (!["disable", "if-possible", "required"].includes(requestedHardwareAcceleration)) {
   throw new Error(
-    `Invalid REMOTION_HARDWARE_ACCELERATION: ${hardwareAcceleration}`,
+    `Invalid REMOTION_HARDWARE_ACCELERATION: ${requestedHardwareAcceleration}`,
   );
 }
 
-if (
-  remotionPort !== null &&
-  (!Number.isInteger(remotionPort) || remotionPort <= 0)
-) {
-  throw new Error(`Invalid REMOTION_PROXY_PORT: ${process.env.REMOTION_PROXY_PORT}`);
-}
-
 console.log(
-  `Render settings: concurrency=${concurrency}, hardwareAcceleration=${hardwareAcceleration}`,
+  `Render settings: concurrency=${concurrency}, requestedConcurrency=${requestedConcurrency}, maxConcurrency=${maxConcurrency}, hardwareAcceleration=${hardwareAcceleration}`,
 );
+if (requestedHardwareAcceleration !== hardwareAcceleration) {
+  console.log(
+    `Requested hardwareAcceleration=${requestedHardwareAcceleration} ignored; set REMOTION_ALLOW_HARDWARE_ACCELERATION=1 to enable it.`,
+  );
+}
 
 const collectFiles = (target) => {
   if (!fs.existsSync(target)) return [];
@@ -110,7 +117,7 @@ if (canReuseBundle) {
   console.log(`Created Remotion bundle: ${bundleDir}`);
 }
 console.log(`Serving Remotion bundle: ${serveUrl}`);
-console.log(`Remotion proxy port: ${remotionPort ?? "auto"}`);
+console.log("Remotion proxy port: auto");
 
 const fps = inputProps.fps ?? 30;
 const introSeconds = Math.max(3, Math.ceil((inputProps.introDuration ?? 0) + 1));
@@ -146,7 +153,6 @@ await renderMedia({
   outputLocation: outputPath,
   inputProps,
   ...browserOptions,
-  ...(remotionPort === null ? {} : {port: remotionPort}),
   concurrency,
   hardwareAcceleration,
   onProgress: (progress) => {
