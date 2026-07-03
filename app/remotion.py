@@ -16,6 +16,37 @@ _active_processes: Dict[int, subprocess.Popen[str]] = {}
 _active_processes_lock = threading.Lock()
 
 
+class RemotionRenderError(RuntimeError):
+    def __init__(
+        self,
+        return_code: int,
+        details: str,
+        *,
+        timed_out: bool,
+        attempt_label: str,
+    ) -> None:
+        self.return_code = return_code
+        self.details = details
+        self.timed_out = timed_out
+        self.attempt_label = attempt_label
+        suffix = "\n渲染超时，已强制终止子进程组。" if timed_out else ""
+        super().__init__(
+            f"Remotion render failed with exit code {return_code} "
+            f"({attempt_label}).\n{details}{suffix}"
+        )
+
+    @property
+    def retryable(self) -> bool:
+        lowered = self.details.lower()
+        return (
+            self.timed_out
+            or self.return_code in {-9, -15}
+            or "target-closed" in lowered
+            or "browser crashed" in lowered
+            or "got no response" in lowered
+        )
+
+
 def _signal_process_group(process: subprocess.Popen[str], sig: signal.Signals) -> None:
     try:
         os.killpg(process.pid, sig)
@@ -79,6 +110,55 @@ def render_video(
 
     props_path.write_text(json.dumps(props, ensure_ascii=False, indent=2), encoding="utf-8")
 
+    attempts = [
+        ("normal", {}, settings.render_timeout_seconds),
+        (
+            "safe-retry",
+            {
+                "REMOTION_CONCURRENCY": "1",
+                "REMOTION_MAX_CONCURRENCY": "1",
+                "REMOTION_HARDWARE_ACCELERATION": "disable",
+                "REMOTION_ALLOW_HARDWARE_ACCELERATION": "0",
+            },
+            max(settings.render_timeout_seconds, 7200),
+        ),
+    ]
+
+    last_error: Optional[RemotionRenderError] = None
+    for attempt_index, (attempt_label, env_overrides, timeout_seconds) in enumerate(attempts):
+        try:
+            return _run_render_process(
+                report_id=report_id,
+                props_path=props_path,
+                output_path=output_path,
+                env_overrides=env_overrides,
+                timeout_seconds=timeout_seconds,
+                attempt_label=attempt_label,
+                on_progress=on_progress,
+            )
+        except RemotionRenderError as exc:
+            last_error = exc
+            if attempt_index == 0 and exc.retryable:
+                continue
+            raise
+
+    if last_error is not None:
+        raise last_error
+    return output_path
+
+
+def _run_render_process(
+    *,
+    report_id: int,
+    props_path: Path,
+    output_path: Path,
+    env_overrides: Dict[str, str],
+    timeout_seconds: int,
+    attempt_label: str,
+    on_progress: Optional[ProgressCallback],
+) -> Path:
+    env = os.environ.copy()
+    env.update(env_overrides)
     process = subprocess.Popen(
         [
             "node",
@@ -91,6 +171,7 @@ def render_video(
         stdout=subprocess.PIPE,
         text=True,
         start_new_session=True,
+        env=env,
     )
 
     with _active_processes_lock:
@@ -103,7 +184,7 @@ def render_video(
     timed_out = False
 
     def _watchdog() -> None:
-        if finished_event.wait(settings.render_timeout_seconds):
+        if finished_event.wait(timeout_seconds):
             return  # 进程已正常结束，看门狗提前退出
         nonlocal timed_out
         timed_out = True
@@ -139,9 +220,11 @@ def render_video(
         return_code = process.wait()
         if return_code != 0:
             details = "\n".join(output_lines[-40:])
-            suffix = "\n渲染超时，已强制终止子进程组。" if timed_out else ""
-            raise RuntimeError(
-                f"Remotion render failed with exit code {return_code}.\n{details}{suffix}"
+            raise RemotionRenderError(
+                return_code,
+                details,
+                timed_out=timed_out,
+                attempt_label=attempt_label,
             )
 
         return output_path

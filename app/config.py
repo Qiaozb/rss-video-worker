@@ -55,7 +55,7 @@ class Settings:
 
     # 单次 Remotion 渲染的墙上时钟超时（秒）。超时后 kill 掉子进程组，
     # 避免卡死的 Chrome/FFmpeg 永久阻塞单消费者渲染队列。
-    render_timeout_seconds: int = int(os.getenv("RENDER_TIMEOUT_SECONDS", "1800"))
+    render_timeout_seconds: int = int(os.getenv("RENDER_TIMEOUT_SECONDS", "7200"))
     # 调度器判定任务僵尸的心跳阈值（秒）。heartbeat_at 早于该阈值且仍处于
     # running/rendering 的任务会被回收：渲染任务杀进程组，pipeline 标记失败。
     video_stale_seconds: int = int(os.getenv("VIDEO_STALE_SECONDS", "900"))

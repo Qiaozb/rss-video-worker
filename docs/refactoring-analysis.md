@@ -55,7 +55,18 @@ app/
 
 迁移时注意生成器闭包捕获的状态（`_is_cancelled` 等应改为调用 manager 方法），以及循环内查库逻辑应走 repo 层。
 
-**生命周期迁移：** 顺带把 `@app.on_event("startup"/"shutdown")`（`app/main.py:1266、1315`，已废弃写法）迁移到 FastAPI `lifespan` context manager，统一连接初始化、建表、线程启动与 `_shutdown_event` 触发。
+**生命周期迁移：** 顺带把 `@app.on_event("startup"/"shutdown")`（`app/main.py:1266、1315`，已废弃写法）迁移到 FastAPI `lifespan` context manager，统一连接初始化、数据库初始化、线程启动与 `_shutdown_event` 触发。
+
+**新增重构要求 — 首次启动数据库初始化：** 后续重构必须把“准备数据库”纳入启动闭环。服务首次启动时应自动完成所需表、索引和基础数据的初始化，避免新环境还要人工执行一组零散 SQL。建议实现方式：
+
+- 以 Alembic 作为唯一结构版本来源，启动时检测 `alembic_version`。
+- 空库或缺少 `alembic_version` 且无业务表时，自动执行 `alembic upgrade head`，一次性创建全部基础表。
+- 已有业务表但未 stamp 的旧库，不自动 destructive 迁移；启动时给出明确错误和操作指引，要求人工执行 `alembic stamp head` 或专门的兼容迁移。
+- 启动成功前校验关键表是否存在：`rss_sources`、`rss_items`、`rss_llm_report`、`rss_llm_key_news`、`rss_llm_tts_queue`、`rss_video_job`、`schedule_configs`、`pipeline_runs`、`model_configs`、`prompt_versions`、`auth_users`。
+- 基础数据也要可重复初始化：默认管理员、默认模型、默认提示词、默认音色只在缺失时写入，不覆盖用户已有配置。
+- 初始化过程必须有日志和失败中断；不能让服务在表缺失状态下继续启动。
+
+验收标准：全新 MySQL 空库只配置 `.env` 后启动 `video-worker`，页面可直接登录并看到 RSS 源、模型、提示词、定时计划、任务中心等页面，不再需要手动执行建表 SQL。
 
 **依赖注入约束：** Router 拆分后不得反向 import `main.py` 中的全局对象。`main.py` 负责创建 `RenderManager`、`PipelineManager`、`SchedulerManager` 等运行态对象，并通过 `app.state` 或 `app/dependencies.py` 提供给 routers。否则路由拆分会引入循环 import，等于把 God Object 从文件层面拆开、在依赖层面重新耦合。
 
