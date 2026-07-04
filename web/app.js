@@ -1,6 +1,6 @@
-import { state } from "./src/state.js?v=20260702-tts-assets";
-import { configureApi, api } from "./src/api.js?v=20260702-tts-assets";
-import { $, escapeHTML, fmt, shortText, statusClass } from "./src/utils.js?v=20260702-tts-assets";
+import { state } from "./src/state.js?v=20260704-report-action-ui";
+import { configureApi, api } from "./src/api.js?v=20260704-report-action-ui";
+import { $, escapeHTML, fmt, shortText, statusClass } from "./src/utils.js?v=20260704-report-action-ui";
 import {
   isTerminalRun,
   isTerminalVideoJob,
@@ -17,7 +17,7 @@ import {
   reportActions,
   reportVideoLive,
   ttsActions,
-} from "./src/renderers.js?v=20260702-tts-assets";
+} from "./src/renderers.js?v=20260704-report-action-ui";
 
 function setOutput(message) {
   $("#overview-output").textContent =
@@ -321,6 +321,7 @@ async function refreshSchedules() {
     const m = (state.models || []).find((x) => String(x.id) === String(id));
     return m ? m.name : `#${id}`;
   };
+  const renderEngineName = (value) => (value === "ffmpeg" ? "FFmpeg 模板" : "Remotion");
   $("#schedule-table").innerHTML = state.schedules
     .map(
       (item) => `
@@ -333,6 +334,7 @@ async function refreshSchedules() {
           <td>${escapeHTML(modelName(item.model_config_id))}</td>
           <td>${escapeHTML(promptName(item.prompt_version_id))}</td>
           <td>${escapeHTML(ttsName(item.tts_config_id))}</td>
+          <td>${escapeHTML(renderEngineName(item.render_engine))}</td>
           <td>${fmt(item.report_type)}</td>
           <td>
             <span class="${statusClass(item.auto_render ? "ok" : "failed")}">${item.auto_render ? "渲染" : "不渲染"}</span>
@@ -672,6 +674,7 @@ function resetScheduleForm() {
   form.elements["prevent_overlap"].checked = true;
   form.elements["auto_render"].checked = true;
   form.elements["auto_publish"].checked = false;
+  form.elements["render_engine"].value = "remotion";
   form.querySelector('button[type="submit"]').textContent = "保存计划";
 }
 
@@ -1273,6 +1276,7 @@ function bindActions() {
           form.elements["model_config_id"].value = schedule.model_config_id || "";
           form.elements["prompt_version_id"].value = schedule.prompt_version_id || "";
           form.elements["tts_config_id"].value = schedule.tts_config_id || "";
+          form.elements["render_engine"].value = schedule.render_engine === "ffmpeg" ? "ffmpeg" : "remotion";
           form.elements["report_type"].value = schedule.report_type || "general";
           form.elements["enabled"].checked = Boolean(schedule.enabled);
           form.elements["prevent_overlap"].checked = Boolean(schedule.prevent_overlap);
@@ -1440,7 +1444,9 @@ function bindActions() {
 
     const renderReportId = target.dataset.renderReport;
     if (renderReportId) {
-      const result = await api(`/render/report/${renderReportId}`, { method: "POST" });
+      const engineSelect = document.querySelector(`[data-render-engine-for="${renderReportId}"]`);
+      const engine = engineSelect?.value || "remotion";
+      const result = await api(`/render/report/${renderReportId}?engine=${encodeURIComponent(engine)}`, { method: "POST" });
       await refreshRuns();
       await refreshReports();
       await refreshVideos();
@@ -1592,7 +1598,7 @@ async function loadReportDetail(reportId) {
   state.selectedReportNews = news;
   $("#report-empty").style.display = "none";
   $("#report-detail-content").classList.remove("hidden");
-  $("#report-actions").innerHTML = reportActions(report);
+  $("#report-actions").innerHTML = reportActions(report, "detail");
   $("#report-meta").innerHTML = `
     <h4>${escapeHTML(report.title)}</h4>
     <p>${escapeHTML(report.daily_trend)}</p>

@@ -1,28 +1,61 @@
-import { state } from "./state.js?v=20260702-tts-assets";
-import { $, escapeHTML, fmt, formatDateTime, shortText, statusClass } from "./utils.js?v=20260702-tts-assets";
+import { state } from "./state.js?v=20260704-report-action-ui";
+import { $, escapeHTML, fmt, formatDateTime, shortText, statusClass } from "./utils.js?v=20260704-report-action-ui";
 
 export function reportCell(reportId) {
   if (!reportId) {
     return "-";
   }
   return `
-    <span>${reportId}</span>
-    <button class="link-button" data-publish-report="${reportId}" type="button" aria-label="发布报告 ${reportId}">发布</button>
-    <button class="link-button" data-render-report="${reportId}" type="button" aria-label="渲染报告 ${reportId}">渲染</button>
+    <div class="report-action-stack is-compact">
+      <div class="report-action-line">
+        <span class="report-action-id">${reportId}</span>
+        <button class="link-button" data-publish-report="${reportId}" type="button" aria-label="发布报告 ${reportId}">发布</button>
+      </div>
+      <div class="report-action-line">
+        ${renderEngineSelect(reportId, "remotion", "compact")}
+        <button class="link-button" data-render-report="${reportId}" type="button" aria-label="渲染报告 ${reportId}">渲染</button>
+      </div>
+    </div>
+  `;
+}
+
+
+function renderEngineSelect(reportId, selected = "remotion", variant = "compact") {
+  const value = selected === "ffmpeg" ? "ffmpeg" : "remotion";
+  const isDetail = variant === "detail";
+  return `
+    <label class="inline-render-engine-wrap ${isDetail ? "is-detail" : "is-compact"}">
+      <span>${isDetail ? "渲染方式" : "方式"}</span>
+      <select class="inline-render-engine ${isDetail ? "is-detail" : "is-compact"}" data-render-engine-for="${reportId}" aria-label="报告 ${reportId} 渲染引擎">
+        <option value="remotion" ${value === "remotion" ? "selected" : ""}>Remotion</option>
+        <option value="ffmpeg" ${value === "ffmpeg" ? "selected" : ""}>${isDetail ? "FFmpeg 模板" : "FFmpeg"}</option>
+      </select>
+    </label>
   `;
 }
 
 
 
-export function reportActions(report) {
+export function reportActions(report, variant = "table") {
   const download = report.video_download_url
     ? `<a class="button-link" href="${report.video_download_url}" target="_blank" rel="noreferrer">下载</a>`
     : "";
+  const selectedEngine = report.video_render_engine || report.render_engine || "remotion";
+  const isDetail = variant === "detail";
   return `
-    <button class="link-button" data-report-detail="${report.id}" type="button" aria-label="查看报告 ${report.id} 详情">查看</button>
-    <button class="link-button" data-render-report="${report.id}" type="button" aria-label="渲染报告 ${report.id}">渲染</button>
-    <button class="link-button" data-publish-report="${report.id}" type="button" aria-label="发布报告 ${report.id}">发布</button>
-    ${download}
+    <div class="report-action-stack ${isDetail ? "is-detail" : "is-compact"}">
+      <div class="report-action-line">
+        <button class="link-button" data-report-detail="${report.id}" type="button" aria-label="查看报告 ${report.id} 详情">查看</button>
+        ${download}
+      </div>
+      <div class="report-action-line">
+        ${renderEngineSelect(report.id, selectedEngine, isDetail ? "detail" : "compact")}
+      </div>
+      <div class="report-action-line">
+        <button class="link-button" data-render-report="${report.id}" type="button" aria-label="渲染报告 ${report.id}">渲染</button>
+        <button class="link-button" data-publish-report="${report.id}" type="button" aria-label="发布报告 ${report.id}">发布</button>
+      </div>
+    </div>
   `;
 }
 
@@ -260,6 +293,7 @@ export function renderVideosTable() {
             <div class="muted">${escapeHTML(shortText(item.report_daily_trend, 80))}</div>
           </td>
           <td><span class="${statusClass(item.status)}">${escapeHTML(item.status)}</span></td>
+          <td>${escapeHTML(item.render_engine || "remotion")}</td>
           <td>
             ${Number(item.progress_percent || 0).toFixed(0)}%
             <div class="muted">${escapeHTML(item.current_step)}</div>

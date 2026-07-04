@@ -13,6 +13,7 @@ if (!propsPath || !outputPath) {
 }
 
 const inputProps = JSON.parse(fs.readFileSync(propsPath, "utf-8"));
+const renderStartedAt = Date.now();
 const entryPoint = path.resolve("remotion/src/index.tsx");
 const publicDir = path.resolve("remotion/public");
 const cacheRoot = path.resolve(".cache");
@@ -165,4 +166,5 @@ await renderMedia({
   },
 });
 
-console.log(`Rendered ${outputPath}`);
+const elapsedSeconds = ((Date.now() - renderStartedAt) / 1000).toFixed(2);
+console.log(`Rendered ${outputPath} in ${elapsedSeconds}s`);

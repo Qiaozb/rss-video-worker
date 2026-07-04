@@ -51,7 +51,7 @@ class Settings:
 
     video_width: int = int(os.getenv("VIDEO_WIDTH", "1920"))
     video_height: int = int(os.getenv("VIDEO_HEIGHT", "1080"))
-    video_fps: int = int(os.getenv("VIDEO_FPS", "30"))
+    video_fps: int = int(os.getenv("VIDEO_FPS", "24"))
 
     # 单次 Remotion 渲染的墙上时钟超时（秒）。超时后 kill 掉子进程组，
     # 避免卡死的 Chrome/FFmpeg 永久阻塞单消费者渲染队列。

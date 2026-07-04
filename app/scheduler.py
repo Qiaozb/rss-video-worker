@@ -27,6 +27,7 @@ class ScheduleConfig:
     report_type: str = "general"
     auto_render: int = 1
     auto_publish: int = 0
+    render_engine: str = "remotion"
 
 
 def utc_now() -> datetime:

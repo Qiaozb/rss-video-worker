@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>通用 RSS 采集平台</title>
-    <link rel="stylesheet" href="/console/styles.css?v=20260702-filter-pills" />
+    <link rel="stylesheet" href="/console/styles.css?v=20260704-report-action-ui" />
   </head>
   <body>
     <a href="#main-content" class="skip-link">跳转到主内容</a>
@@ -188,6 +188,13 @@
               TTS 配置
               <select name="tts_config_id">
                 <option value="">默认</option>
+              </select>
+            </label>
+            <label>
+              渲染方式
+              <select name="render_engine">
+                <option value="remotion">Remotion</option>
+                <option value="ffmpeg">FFmpeg 模板</option>
               </select>
             </label>
             <label>
@@ -425,6 +432,13 @@
               </select>
             </label>
             <label>
+              渲染方式
+              <select name="render_engine">
+                <option value="remotion">Remotion</option>
+                <option value="ffmpeg">FFmpeg 模板</option>
+              </select>
+            </label>
+            <label>
               报告类型
               <input name="report_type" placeholder="general" value="general" />
             </label>
@@ -472,6 +486,7 @@
                 <th scope="col">模型</th>
                 <th scope="col">提示词</th>
                 <th scope="col">TTS</th>
+                <th scope="col">渲染方式</th>
                 <th scope="col">报告类型</th>
                 <th scope="col">渲染/发布</th>
                 <th scope="col">启用</th>
@@ -797,6 +812,7 @@
                 <th scope="col">ID</th>
                 <th scope="col">报告</th>
                 <th scope="col">状态</th>
+                <th scope="col">引擎</th>
                 <th scope="col">进度</th>
                 <th scope="col">时长</th>
                 <th scope="col">文件</th>
@@ -1056,7 +1072,7 @@
     <div class="toast-stack" id="toast-stack" data-glass="toast" aria-live="polite" aria-atomic="false"></div>
 
     <script type="module" src="/console/glass-island.js?v=20260629-glass"></script>
-    <script type="module" src="/console/app.js?v=20260702-tts-assets"></script>
+    <script type="module" src="/console/app.js?v=20260704-report-action-ui"></script>
     <script>
       // 点击涟漪特效：对按钮/标签类元素在按下点产生扩散圆。
       // 通过事件委托挂载，无需逐个绑定；尊重 prefers-reduced-motion。

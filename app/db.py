@@ -339,6 +339,7 @@ def ensure_video_job_table() -> None:
       id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
       report_id BIGINT UNSIGNED NOT NULL,
       status ENUM('pending', 'rendering', 'done', 'failed', 'cancelled') NOT NULL DEFAULT 'pending',
+      render_engine ENUM('remotion', 'ffmpeg') NOT NULL DEFAULT 'remotion',
       video_title VARCHAR(255) NOT NULL,
       video_path VARCHAR(1024) DEFAULT NULL,
       cover_path VARCHAR(1024) DEFAULT NULL,
@@ -364,6 +365,7 @@ def ensure_video_job_table() -> None:
                 "ALTER TABLE rss_video_job ADD COLUMN current_step VARCHAR(255) DEFAULT NULL",
                 "ALTER TABLE rss_video_job ADD COLUMN worker_id VARCHAR(255) DEFAULT NULL",
                 "ALTER TABLE rss_video_job ADD COLUMN heartbeat_at DATETIME DEFAULT NULL",
+                "ALTER TABLE rss_video_job ADD COLUMN render_engine ENUM('remotion', 'ffmpeg') NOT NULL DEFAULT 'remotion'",
             ]:
                 try:
                     cursor.execute(ddl)
@@ -402,6 +404,7 @@ def ensure_schedule_tables() -> None:
       report_type VARCHAR(50) NOT NULL DEFAULT 'general' COMMENT '报告类型',
       auto_render TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否自动生成视频',
       auto_publish TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否自动标记已发布',
+      render_engine ENUM('remotion', 'ffmpeg') NOT NULL DEFAULT 'remotion' COMMENT '视频渲染方式',
       next_run_at DATETIME DEFAULT NULL,
       last_run_at DATETIME DEFAULT NULL,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -425,6 +428,7 @@ def ensure_schedule_tables() -> None:
                     "report_type VARCHAR(50) NOT NULL DEFAULT 'general' COMMENT '报告类型'",
                     "auto_render TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否自动生成视频'",
                     "auto_publish TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否自动标记已发布'",
+                    "render_engine ENUM('remotion', 'ffmpeg') NOT NULL DEFAULT 'remotion' COMMENT '视频渲染方式'",
                 ],
             )
             _replace_unique_key(cursor, "schedule_configs", "uk_schedule_task_type", "uk_schedule_name", "(name)")
@@ -787,18 +791,20 @@ def ensure_rss_report_tables() -> None:
                   AND r.report_type <> ''
                 """
             )
-            # rss_news_dedupe：news_hash 原本是 PRIMARY KEY，需要替换为
-            # (report_type, news_hash) 复合主键以实现按 report_type 隔离去重。
-            cursor.execute(
-                "SHOW INDEX FROM `rss_news_dedupe` WHERE Key_name = 'PRIMARY'"
-            )
-            if cursor.fetchone() is not None:
-                pk_cols = _get_pk_columns(cursor, "rss_news_dedupe")
-                if pk_cols == ["news_hash"]:
-                    cursor.execute("ALTER TABLE rss_news_dedupe DROP PRIMARY KEY")
-            if not _index_exists(cursor, "rss_news_dedupe", "PRIMARY"):
+            # rss_news_dedupe 历史结构不完全一致：
+            # baseline 版本以 news_hash 为主键，可迁为 (report_type, news_hash)；
+            # 若当前库已经以 id AUTO_INCREMENT 为主键，则保留 id 主键，只补复合唯一键。
+            pk_cols = _get_pk_columns(cursor, "rss_news_dedupe")
+            if pk_cols == ["news_hash"]:
+                cursor.execute("ALTER TABLE rss_news_dedupe DROP PRIMARY KEY")
                 cursor.execute(
                     "ALTER TABLE rss_news_dedupe ADD PRIMARY KEY (report_type, news_hash)"
+                )
+            elif pk_cols != ["report_type", "news_hash"] and not _index_exists(
+                cursor, "rss_news_dedupe", "uk_rss_news_dedupe_report_hash"
+            ):
+                cursor.execute(
+                    "ALTER TABLE rss_news_dedupe ADD UNIQUE KEY uk_rss_news_dedupe_report_hash (report_type, news_hash)"
                 )
 
 
@@ -2081,6 +2087,7 @@ def list_reports(
                   MAX(d.published_at) AS last_published_at,
                   v.id AS video_job_id,
                   v.status AS video_status,
+                  v.render_engine AS video_render_engine,
                   v.video_path,
                   v.duration_seconds,
                   v.progress_percent AS video_progress_percent,
@@ -2118,6 +2125,7 @@ def list_reports(
                   r.pipeline_run_id,
                   v.id,
                   v.status,
+                  v.render_engine,
                   v.video_path,
                   v.duration_seconds,
                   v.progress_percent,
@@ -2154,6 +2162,7 @@ def get_report(report_id: int) -> Optional[Dict[str, Any]]:
                   MAX(d.published_at) AS last_published_at,
                   v.id AS video_job_id,
                   v.status AS video_status,
+                  v.render_engine AS video_render_engine,
                   v.video_path,
                   v.duration_seconds,
                   v.progress_percent AS video_progress_percent,
@@ -2192,6 +2201,7 @@ def get_report(report_id: int) -> Optional[Dict[str, Any]]:
                   r.pipeline_run_id,
                   v.id,
                   v.status,
+                  v.render_engine,
                   v.video_path,
                   v.duration_seconds,
                   v.progress_percent,
@@ -2442,7 +2452,8 @@ def get_schedule_config(schedule_id: int) -> Optional[ScheduleConfig]:
                   tts_config_id,
                   report_type,
                   auto_render,
-                  auto_publish
+                  auto_publish,
+                  render_engine
                 FROM schedule_configs
                 WHERE id = %s
                 """,
@@ -2469,6 +2480,7 @@ def upsert_schedule_config(
     report_type: str = "general",
     auto_render: bool = True,
     auto_publish: bool = False,
+    render_engine: str = "remotion",
     schedule_id: Optional[int] = None,
 ) -> int:
     next_run = next_run_after(cron_expression, tz_name) if enabled else None
@@ -2496,6 +2508,7 @@ def upsert_schedule_config(
                             report_type = %s,
                             auto_render = %s,
                             auto_publish = %s,
+                            render_engine = %s,
                             next_run_at = %s
                         WHERE id = %s
                         """,
@@ -2516,6 +2529,7 @@ def upsert_schedule_config(
                             report_type,
                             1 if auto_render else 0,
                             1 if auto_publish else 0,
+                            render_engine,
                             next_run,
                             schedule_id,
                         ),
@@ -2541,9 +2555,10 @@ def upsert_schedule_config(
                   report_type,
                   auto_render,
                   auto_publish,
+                  render_engine,
                   next_run_at
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                   task_type = VALUES(task_type),
                   cron_expression = VALUES(cron_expression),
@@ -2560,6 +2575,7 @@ def upsert_schedule_config(
                   report_type = VALUES(report_type),
                   auto_render = VALUES(auto_render),
                   auto_publish = VALUES(auto_publish),
+                  render_engine = VALUES(render_engine),
                   next_run_at = VALUES(next_run_at)
                 """,
                 (
@@ -2579,6 +2595,7 @@ def upsert_schedule_config(
                     report_type,
                     1 if auto_render else 0,
                     1 if auto_publish else 0,
+                    render_engine,
                     next_run,
                 ),
             )
@@ -2611,7 +2628,8 @@ def due_schedule_configs() -> List[ScheduleConfig]:
                   tts_config_id,
                   report_type,
                   auto_render,
-                  auto_publish
+                  auto_publish,
+                  render_engine
                 FROM schedule_configs
                 WHERE enabled = 1
                   AND next_run_at IS NOT NULL
@@ -3091,22 +3109,30 @@ def list_tts_audio_assets(
             return cursor.fetchall()
 
 
-def upsert_video_job(report_id: int, title: str, status: str, item_count: int) -> int:
+def upsert_video_job(
+    report_id: int,
+    title: str,
+    status: str,
+    item_count: int,
+    render_engine: str = "remotion",
+) -> int:
     sql = """
     INSERT INTO rss_video_job (
       report_id,
       video_title,
       status,
+      render_engine,
       item_count,
       progress_percent,
       current_step,
       worker_id,
       heartbeat_at
     )
-    VALUES (%s, %s, %s, %s, %s, %s, %s, IF(%s = 'rendering', UTC_TIMESTAMP(), NULL))
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, IF(%s = 'rendering', UTC_TIMESTAMP(), NULL))
     ON DUPLICATE KEY UPDATE
       video_title = VALUES(video_title),
       status = VALUES(status),
+      render_engine = VALUES(render_engine),
       item_count = VALUES(item_count),
       progress_percent = VALUES(progress_percent),
       current_step = VALUES(current_step),
@@ -3124,6 +3150,7 @@ def upsert_video_job(report_id: int, title: str, status: str, item_count: int) -
                     report_id,
                     title,
                     status,
+                    render_engine,
                     item_count,
                     0,
                     current_step,

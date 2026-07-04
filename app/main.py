@@ -120,6 +120,7 @@ from app.db import (
     list_stale_pipeline_runs,
     list_stale_video_jobs,
 )
+from app.ffmpeg_template import render_ffmpeg_template
 from app.remotion import cancel_all_renders, cancel_render, render_video
 from app.progress import ProgressThrottler
 from app.pipeline import analyze_recent_rss_items, report_title_fallback
@@ -237,6 +238,7 @@ class AnalyzeRSSRequest(BaseModel):
     report_type: str = Field(default="general", max_length=50)
     auto_render: bool = True
     auto_publish: bool = False
+    render_engine: Literal["remotion", "ffmpeg"] = "remotion"
 
 
 class PipelineRunRequest(BaseModel):
@@ -251,6 +253,7 @@ class PipelineRunRequest(BaseModel):
     report_type: str = Field(default="general", max_length=50)
     auto_render: bool = True
     auto_publish: bool = False
+    render_engine: Literal["remotion", "ffmpeg"] = "remotion"
 
 
 class ScheduleUpsertRequest(BaseModel):
@@ -271,6 +274,7 @@ class ScheduleUpsertRequest(BaseModel):
     report_type: str = Field(default="general", max_length=50)
     auto_render: bool = True
     auto_publish: bool = False
+    render_engine: Literal["remotion", "ffmpeg"] = "remotion"
 
 
 class ModelConfigUpsertRequest(BaseModel):
@@ -799,7 +803,22 @@ def _render_worker_loop() -> None:
             _render_queue.task_done()
 
 
-def _schedule_report(report_id: int, title: str, item_count: int) -> tuple[int, bool]:
+RenderEngine = Literal["remotion", "ffmpeg"]
+
+
+def _normalize_render_engine(value: Optional[str]) -> RenderEngine:
+    normalized = (value or "remotion").strip().lower()
+    if normalized in {"ffmpeg", "template", "ffmpeg_template", "fast"}:
+        return "ffmpeg"
+    return "remotion"
+
+
+def _schedule_report(
+    report_id: int,
+    title: str,
+    item_count: int,
+    render_engine: RenderEngine = "remotion",
+) -> tuple[int, bool]:
     with _render_state_lock:
         if report_id in _scheduled_reports:
             existing = get_video_job_by_report_id(report_id)
@@ -809,7 +828,7 @@ def _schedule_report(report_id: int, title: str, item_count: int) -> tuple[int, 
         _scheduled_reports.add(report_id)
 
     try:
-        job_id = upsert_video_job(report_id, title, "pending", item_count)
+        job_id = upsert_video_job(report_id, title, "pending", item_count, render_engine=render_engine)
         _render_queue.put(report_id)
         return job_id, True
     except Exception:
@@ -831,6 +850,7 @@ class PipelineTaskConfig:
     report_type: str = "general"
     auto_render: bool = True
     auto_publish: bool = False
+    render_engine: RenderEngine = "remotion"
 
 
 def _execute_pipeline_task(
@@ -934,7 +954,12 @@ def _execute_pipeline_task(
                 title = items[0].report_title or report_title_fallback(
                     config.report_type, config.rss_category
                 )
-                job_id, scheduled = _schedule_report(analyze_result.report_id, title, len(items))
+                job_id, scheduled = _schedule_report(
+                    analyze_result.report_id,
+                    title,
+                    len(items),
+                    render_engine=config.render_engine,
+                )
                 render_result = {
                     "job_id": job_id,
                     "report_id": analyze_result.report_id,
@@ -1075,6 +1100,7 @@ def _config_from_schedule(schedule: ScheduleConfig) -> PipelineTaskConfig:
         report_type=schedule.report_type or "general",
         auto_render=bool(schedule.auto_render),
         auto_publish=bool(schedule.auto_publish),
+        render_engine=_normalize_render_engine(schedule.render_engine),
     )
 
 
@@ -1091,6 +1117,7 @@ def _config_from_run_row(row: Dict[str, Any]) -> PipelineTaskConfig:
         report_type=payload["report_type"],
         auto_render=payload["auto_render"],
         auto_publish=payload["auto_publish"],
+        render_engine=payload["render_engine"],
     )
 
 
@@ -1118,6 +1145,7 @@ def _start_pipeline_task(
             "report_type": config.report_type,
             "auto_render": config.auto_render,
             "auto_publish": config.auto_publish,
+            "render_engine": config.render_engine,
             "prevent_overlap": prevent_overlap,
             "retry_count": retry_count,
             "retry_interval_seconds": retry_interval_seconds,
@@ -1162,6 +1190,7 @@ def _pipeline_payload(row: Dict[str, Any]) -> Dict[str, Any]:
         "report_type": parsed.get("report_type") or row.get("report_type") or "general",
         "auto_render": bool(parsed.get("auto_render", True)),
         "auto_publish": bool(parsed.get("auto_publish", False)),
+        "render_engine": _normalize_render_engine(parsed.get("render_engine")),
     }
 
 
@@ -1178,6 +1207,7 @@ def _run_recovered_pipeline_run(row: Dict[str, Any]) -> None:
         report_type=payload["report_type"],
         auto_render=payload["auto_render"],
         auto_publish=payload["auto_publish"],
+        render_engine=payload["render_engine"],
     )
     add_pipeline_event(
         run_id,
@@ -1212,7 +1242,12 @@ def _run_recovered_pipeline_run(row: Dict[str, Any]) -> None:
                 title = items[0].report_title or report_title_fallback(
                     config.report_type, config.rss_category
                 )
-                _schedule_report(existing_report_id, title, len(items))
+                _schedule_report(
+                    existing_report_id,
+                    title,
+                    len(items),
+                    render_engine=config.render_engine,
+                )
         return
     _run_pipeline_task(
         run_id,
@@ -1358,6 +1393,7 @@ def _scheduler_loop() -> None:
                     report_type=schedule.report_type or "general",
                     auto_render=bool(schedule.auto_render),
                     auto_publish=bool(schedule.auto_publish),
+                    render_engine=_normalize_render_engine(schedule.render_engine),
                 )
                 _start_pipeline_task(
                     schedule.task_type,
@@ -1962,6 +1998,7 @@ def analyze_rss_items(payload: AnalyzeRSSRequest) -> Dict[str, Any]:
         report_type=payload.report_type,
         auto_render=payload.auto_render,
         auto_publish=payload.auto_publish,
+        render_engine=_normalize_render_engine(payload.render_engine),
     )
     run_id = _start_pipeline_task(
         "rss_analyze",
@@ -1986,6 +2023,7 @@ def collect_and_analyze(payload: AnalyzeRSSRequest) -> Dict[str, Any]:
         report_type=payload.report_type,
         auto_render=payload.auto_render,
         auto_publish=payload.auto_publish,
+        render_engine=_normalize_render_engine(payload.render_engine),
     )
     run_id = _start_pipeline_task(
         "collect_and_analyze",
@@ -2011,6 +2049,7 @@ def pipeline_run(payload: PipelineRunRequest) -> Dict[str, Any]:
         report_type=payload.report_type,
         auto_render=payload.auto_render,
         auto_publish=payload.auto_publish,
+        render_engine=_normalize_render_engine(payload.render_engine),
     )
     run_id = _start_pipeline_task(
         payload.task_type,
@@ -2171,6 +2210,7 @@ def save_schedule(payload: ScheduleUpsertRequest) -> Dict[str, Any]:
         report_type=payload.report_type,
         auto_render=payload.auto_render,
         auto_publish=payload.auto_publish,
+        render_engine=_normalize_render_engine(payload.render_engine),
         schedule_id=payload.id,
     )
     return {
@@ -2377,25 +2417,27 @@ def delete_tts_item_audio(queue_id: int) -> Dict[str, Any]:
 
 
 @app.post("/render/latest")
-def render_latest() -> Dict[str, Any]:
+def render_latest(engine: str = "remotion") -> Dict[str, Any]:
     report_id = get_latest_report_id()
     if report_id is None:
         raise HTTPException(status_code=404, detail="No report found")
-    return render_report(report_id)
+    return render_report(report_id, engine=engine)
 
 
 @app.post("/render/report/{report_id}")
-def render_report(report_id: int) -> Dict[str, Any]:
+def render_report(report_id: int, engine: str = "remotion") -> Dict[str, Any]:
     items = load_tts_items(report_id)
     if not items:
         raise HTTPException(status_code=404, detail=f"No TTS items for report_id={report_id}")
 
+    render_engine = _normalize_render_engine(engine)
     title = items[0].report_title or _fallback_title_from_report(report_id)
-    job_id, scheduled = _schedule_report(report_id, title, len(items))
+    job_id, scheduled = _schedule_report(report_id, title, len(items), render_engine=render_engine)
 
     return {
         "job_id": job_id,
         "report_id": report_id,
+        "render_engine": render_engine,
         "status": "pending" if scheduled else "already_scheduled",
         "progress_percent": 0,
         "current_step": "任务已排队" if scheduled else "任务已在队列中",
@@ -2425,7 +2467,9 @@ def render_report_job(report_id: int) -> None:
             raise RuntimeError(f"No TTS items for report_id={report_id}")
 
         title = items[0].report_title or _fallback_title_from_report(report_id)
-        upsert_video_job(report_id, title, "rendering", len(items))
+        existing_job = get_video_job_by_report_id(report_id) or {}
+        render_engine = _normalize_render_engine(existing_job.get("render_engine"))
+        upsert_video_job(report_id, title, "rendering", len(items), render_engine=render_engine)
         _raise_if_cancelled(report_id)
 
         report_dir = settings.output_dir / f"report_{report_id}"
@@ -2518,16 +2562,20 @@ def render_report_job(report_id: int) -> None:
             "items": rendered_items,
         }
 
-        set_video_job_progress(report_id, 82, "Remotion 渲染视频中")
+        engine_label = "FFmpeg 模板" if render_engine == "ffmpeg" else "Remotion"
+        set_video_job_progress(report_id, 82, f"{engine_label} 渲染视频中")
         progress_throttler = ProgressThrottler(min_delta=1.0, max_interval_seconds=2.0)
         progress_throttler.reset(82)
 
         def update_render_progress(progress: float) -> None:
             percent = 82 + progress * 16
             if progress_throttler.should_update(percent, force=progress >= 1):
-                set_video_job_progress(report_id, percent, f"Remotion 渲染视频中 {progress * 100:.0f}%")
+                set_video_job_progress(report_id, percent, f"{engine_label} 渲染视频中 {progress * 100:.0f}%")
 
-        video_path = render_video(report_id, props, report_dir, on_progress=update_render_progress)
+        if render_engine == "ffmpeg":
+            video_path = render_ffmpeg_template(report_id, props, report_dir, on_progress=update_render_progress)
+        else:
+            video_path = render_video(report_id, props, report_dir, on_progress=update_render_progress)
         duration_seconds = total_audio_seconds + 3.0
         set_video_job_done(report_id, str(video_path), duration_seconds)
 

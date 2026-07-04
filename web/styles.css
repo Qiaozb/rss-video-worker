@@ -959,6 +959,87 @@ main {
   min-width: 120px;
 }
 
+.inline-render-engine-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.inline-render-engine-wrap.is-compact > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.inline-render-engine-wrap.is-detail {
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+}
+
+.inline-render-engine {
+  width: auto;
+  height: 32px;
+  padding: 0 28px 0 12px;
+  border-radius: 999px;
+  border-color: var(--line);
+  background-color: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 32px;
+}
+
+.inline-render-engine.is-compact {
+  min-width: 88px;
+  max-width: 96px;
+  height: 30px;
+  padding: 0 24px 0 10px;
+  font-size: 12px;
+}
+
+.inline-render-engine.is-detail {
+  min-width: 142px;
+}
+
+.report-action-stack {
+  display: inline-flex;
+  max-width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+}
+
+.report-action-stack.is-detail {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.report-action-line {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.report-action-id {
+  min-width: 24px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---------- 提示条 ---------- */
 .notice {
   min-height: 44px;
@@ -1499,6 +1580,8 @@ td.muted {
 
 .run-actions-cell {
   white-space: normal;
+  min-width: 128px;
+  max-width: 148px;
 }
 
 .run-report-cell {

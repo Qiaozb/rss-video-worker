@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   AbsoluteFill,
   Audio,
@@ -130,6 +130,7 @@ const IntroScene: React.FC<{
 }> = ({ title, date, progressItems, voiceover, audioSrc }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const subtitleChunks = useMemo(() => splitSubtitle(voiceover), [voiceover]);
   const opacity = interpolate(frame, [0, 18], [0, 1], { extrapolateRight: "clamp" });
   return (
     <Screen>
@@ -140,7 +141,7 @@ const IntroScene: React.FC<{
         <h1 style={styles.heroTitle}>{title}</h1>
         <div style={styles.date}>{date}</div>
       </div>
-      <Subtitle text={currentSubtitle(voiceover, frame, fps)} />
+      <Subtitle text={currentSubtitle(subtitleChunks, voiceover, frame, fps)} />
     </Screen>
   );
 };
@@ -152,6 +153,7 @@ const NewsScene: React.FC<{ item: BriefingItem; progressItems: BriefingItem[]; a
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const subtitleChunks = useMemo(() => splitSubtitle(item.voiceover), [item.voiceover]);
   const opacity = interpolate(frame, [0, 12], [0, 1], { extrapolateRight: "clamp" });
   const y = interpolate(frame, [0, 18], [20, 0], { extrapolateRight: "clamp" });
   const summaryLength = item.summary.length;
@@ -176,7 +178,7 @@ const NewsScene: React.FC<{ item: BriefingItem; progressItems: BriefingItem[]; a
           {item.reserveReason || "该新闻与游戏行业动态相关。"}
         </InfoCard>
       </div>
-      <Subtitle text={currentSubtitle(item.voiceover, frame, fps)} />
+      <Subtitle text={currentSubtitle(subtitleChunks, item.voiceover, frame, fps)} />
     </Screen>
   );
 };
@@ -189,6 +191,7 @@ const OutroScene: React.FC<{
 }> = ({ title, progressItems, voiceover, audioSrc }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const subtitleChunks = useMemo(() => splitSubtitle(voiceover), [voiceover]);
   return (
     <Screen>
       <TopProgress items={progressItems} />
@@ -198,7 +201,7 @@ const OutroScene: React.FC<{
         <h1 style={styles.heroTitle}>{title}</h1>
         <div style={styles.date}>明天继续关注游戏行业新动态</div>
       </div>
-      <Subtitle text={currentSubtitle(voiceover, frame, fps)} />
+      <Subtitle text={currentSubtitle(subtitleChunks, voiceover, frame, fps)} />
     </Screen>
   );
 };
@@ -267,13 +270,17 @@ const Subtitle: React.FC<{ text: string }> = ({ text }) => {
   return <div style={styles.subtitle}>{text}</div>;
 };
 
-const currentSubtitle = (text: string, frame: number, fps: number): string => {
-  if (!text) return "";
-  const chunks = text
+const splitSubtitle = (text: string): string[] => {
+  if (!text) return [];
+  return text
     .split(/[。！？!?；;]/)
     .map((part) => part.trim())
     .filter(Boolean);
-  if (chunks.length === 0) return text;
+};
+
+const currentSubtitle = (chunks: string[], fallbackText: string, frame: number, fps: number): string => {
+  if (!fallbackText) return "";
+  if (chunks.length === 0) return fallbackText;
   const index = Math.min(chunks.length - 1, Math.floor(frame / (fps * 3)));
   return chunks[index];
 };
@@ -291,7 +298,7 @@ const styles: Record<string, React.CSSProperties> = {
   backgroundGlow: {
     position: "absolute",
     inset: "120px 160px",
-    background: "radial-gradient(circle at 50% 20%, rgba(207,104,68,0.12), transparent 60%)",
+    background: "rgba(207,104,68,0.04)",
   },
   topbar: {
     height: 86,
@@ -372,7 +379,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: "#fff",
     borderRadius: 24,
     padding: "34px 40px",
-    boxShadow: "0 10px 28px rgba(0,0,0,0.08)",
+    border: "1px solid rgba(31,41,51,0.08)",
     overflow: "hidden",
   },
   cardTitle: {

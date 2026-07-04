@@ -26,6 +26,22 @@ def _index_exists(table_name: str, index_name: str) -> bool:
     return result.fetchone() is not None
 
 
+def _pk_columns(table_name: str):
+    connection = op.get_bind()
+    result = connection.exec_driver_sql(
+        """
+        SELECT COLUMN_NAME
+        FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = %s
+          AND INDEX_NAME = 'PRIMARY'
+        ORDER BY SEQ_IN_INDEX
+        """,
+        (table_name,),
+    )
+    return [row[0] for row in result.fetchall()]
+
+
 def _add_column(table_name: str, ddl: str) -> None:
     if not _column_exists(table_name, ddl.split()[0]):
         op.execute(f"ALTER TABLE {table_name} ADD COLUMN {ddl}")
@@ -75,21 +91,25 @@ def upgrade() -> None:
           AND r.report_type <> ''
         """
     )
-    # news_hash 原本是 PRIMARY KEY（Key_name='PRIMARY'），不是名为 uk_news_hash 的唯一索引。
-    # 必须删除旧主键后重建为 (report_type, news_hash) 复合主键，否则同一条新闻在不同
-    # report_type 下仍会因主键冲突而无法插入。
-    connection = op.get_bind()
-    pk_result = connection.exec_driver_sql(
-        "SHOW INDEX FROM rss_news_dedupe WHERE Key_name = 'PRIMARY'"
-    )
-    if pk_result.fetchone() is not None:
+    # 历史库可能有两种结构：
+    # 1. baseline 版本：news_hash 是 PRIMARY KEY，需要替换为 (report_type, news_hash)。
+    # 2. 手动/自愈版本：id AUTO_INCREMENT 是 PRIMARY KEY，不能直接 DROP PRIMARY KEY，
+    #    否则 MySQL 会报 1075。此时保留 id 主键，补一个复合唯一键即可。
+    pk_cols = _pk_columns("rss_news_dedupe")
+    if pk_cols == ["news_hash"]:
         op.execute("ALTER TABLE rss_news_dedupe DROP PRIMARY KEY")
     # 兼容早期版本可能已创建过 uk_news_hash 唯一索引的情况
     if _index_exists("rss_news_dedupe", "uk_news_hash"):
         op.execute("ALTER TABLE rss_news_dedupe DROP INDEX uk_news_hash")
-    if not _index_exists("rss_news_dedupe", "PRIMARY"):
+    if pk_cols == ["news_hash"] and not _index_exists("rss_news_dedupe", "PRIMARY"):
         op.execute(
             "ALTER TABLE rss_news_dedupe ADD PRIMARY KEY (report_type, news_hash)"
+        )
+    elif pk_cols != ["report_type", "news_hash"] and not _index_exists(
+        "rss_news_dedupe", "uk_rss_news_dedupe_report_hash"
+    ):
+        op.execute(
+            "ALTER TABLE rss_news_dedupe ADD UNIQUE KEY uk_rss_news_dedupe_report_hash (report_type, news_hash)"
         )
 
 

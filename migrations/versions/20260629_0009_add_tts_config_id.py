@@ -18,23 +18,33 @@ branch_labels = None
 depends_on = None
 
 
+def _column_exists(table_name: str, column_name: str) -> bool:
+    connection = op.get_bind()
+    result = connection.exec_driver_sql(f"SHOW COLUMNS FROM {table_name} LIKE %s", (column_name,))
+    return result.fetchone() is not None
+
+
 def upgrade() -> None:
     # Add tts_config_id to schedule_configs
-    op.add_column(
-        'schedule_configs',
-        sa.Column('tts_config_id', sa.Integer(), nullable=True, comment='TTS 模型配置 ID')
-    )
+    if not _column_exists('schedule_configs', 'tts_config_id'):
+        op.add_column(
+            'schedule_configs',
+            sa.Column('tts_config_id', sa.Integer(), nullable=True, comment='TTS 模型配置 ID')
+        )
 
     # Add tts_config_id to pipeline_runs
-    op.add_column(
-        'pipeline_runs',
-        sa.Column('tts_config_id', sa.Integer(), nullable=True, comment='TTS 模型配置 ID')
-    )
+    if not _column_exists('pipeline_runs', 'tts_config_id'):
+        op.add_column(
+            'pipeline_runs',
+            sa.Column('tts_config_id', sa.Integer(), nullable=True, comment='TTS 模型配置 ID')
+        )
 
 
 def downgrade() -> None:
     # Remove tts_config_id from pipeline_runs
-    op.drop_column('pipeline_runs', 'tts_config_id')
+    if _column_exists('pipeline_runs', 'tts_config_id'):
+        op.drop_column('pipeline_runs', 'tts_config_id')
 
     # Remove tts_config_id from schedule_configs
-    op.drop_column('schedule_configs', 'tts_config_id')
+    if _column_exists('schedule_configs', 'tts_config_id'):
+        op.drop_column('schedule_configs', 'tts_config_id')

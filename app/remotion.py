@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import logging
+import math
 import os
 import signal
 import subprocess
 import threading
+import time
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
@@ -14,6 +17,7 @@ from app.config import settings
 ProgressCallback = Callable[[float], None]
 _active_processes: Dict[int, subprocess.Popen[str]] = {}
 _active_processes_lock = threading.Lock()
+logger = logging.getLogger(__name__)
 
 
 class RemotionRenderError(RuntimeError):
@@ -115,8 +119,18 @@ def render_video(
         (
             "safe-retry",
             {
-                "REMOTION_CONCURRENCY": "1",
-                "REMOTION_MAX_CONCURRENCY": "1",
+                "REMOTION_CONCURRENCY": "3",
+                "REMOTION_MAX_CONCURRENCY": "3",
+                "REMOTION_HARDWARE_ACCELERATION": "if-possible",
+                "REMOTION_ALLOW_HARDWARE_ACCELERATION": "1",
+            },
+            max(settings.render_timeout_seconds, 7200),
+        ),
+        (
+            "emergency-retry",
+            {
+                "REMOTION_CONCURRENCY": "2",
+                "REMOTION_MAX_CONCURRENCY": "2",
                 "REMOTION_HARDWARE_ACCELERATION": "disable",
                 "REMOTION_ALLOW_HARDWARE_ACCELERATION": "0",
             },
@@ -159,6 +173,18 @@ def _run_render_process(
 ) -> Path:
     env = os.environ.copy()
     env.update(env_overrides)
+    estimated_video_seconds = _estimate_video_seconds(props_path)
+    started_at = time.monotonic()
+    logger.info(
+        "Starting Remotion render: report_id=%s attempt=%s timeout=%ss estimated_video_seconds=%.2f concurrency=%s max_concurrency=%s hardware=%s",
+        report_id,
+        attempt_label,
+        timeout_seconds,
+        estimated_video_seconds,
+        env.get("REMOTION_CONCURRENCY", "<unset>"),
+        env.get("REMOTION_MAX_CONCURRENCY", "<unset>"),
+        env.get("REMOTION_HARDWARE_ACCELERATION", "<unset>"),
+    )
     process = subprocess.Popen(
         [
             "node",
@@ -220,6 +246,15 @@ def _run_render_process(
         return_code = process.wait()
         if return_code != 0:
             details = "\n".join(output_lines[-40:])
+            elapsed = time.monotonic() - started_at
+            logger.warning(
+                "Remotion render failed: report_id=%s attempt=%s elapsed_seconds=%.2f return_code=%s timed_out=%s",
+                report_id,
+                attempt_label,
+                elapsed,
+                return_code,
+                timed_out,
+            )
             raise RemotionRenderError(
                 return_code,
                 details,
@@ -227,6 +262,16 @@ def _run_render_process(
                 attempt_label=attempt_label,
             )
 
+        elapsed = time.monotonic() - started_at
+        speed_ratio = elapsed / estimated_video_seconds if estimated_video_seconds > 0 else None
+        logger.info(
+            "Remotion render completed: report_id=%s attempt=%s elapsed_seconds=%.2f estimated_video_seconds=%.2f render_to_video_ratio=%s",
+            report_id,
+            attempt_label,
+            elapsed,
+            estimated_video_seconds,
+            f"{speed_ratio:.2f}x" if speed_ratio is not None else "-",
+        )
         return output_path
     finally:
         finished_event.set()
@@ -234,3 +279,21 @@ def _run_render_process(
         with _active_processes_lock:
             if _active_processes.get(report_id) is process:
                 del _active_processes[report_id]
+
+
+def _estimate_video_seconds(props_path: Path) -> float:
+    try:
+        props = json.loads(props_path.read_text(encoding="utf-8"))
+    except Exception:
+        return 0.0
+
+    intro_seconds = max(3, math.ceil((props.get("introDuration") or 0) + 1))
+    outro_seconds = max(3, math.ceil((props.get("outroDuration") or 0) + 1))
+    item_seconds = 0
+    for item in props.get("items") or []:
+        try:
+            duration = float(item.get("duration") or 0)
+        except (TypeError, ValueError):
+            duration = 0
+        item_seconds += max(8, math.ceil(duration + 1))
+    return float(intro_seconds + item_seconds + outro_seconds)
