@@ -2027,25 +2027,7 @@ td.muted {
   }
 }
 
-/* ---------- LiquidGlass 覆写 ---------- */
-/* 确保 SVG filter 定义不阻挡鼠标事件 */
-[data-glass] svg[aria-hidden="true"] {
-  pointer-events: none !important;
-}
-
-/* 玻璃遮罩层仅用于视觉效果，不阻挡表单交互 */
-.glass__warp {
-  pointer-events: none !important;
-}
-
-/* 内部内容层确保 z-index 足够高以接收交互 */
-.glass > div:last-child {
-  position: relative;
-  z-index: 2 !important;
-  pointer-events: auto !important;
-}
-
-/* 登录卡片使用 CSS glassmorphism（纯样式，避免 SVG filter 干扰输入交互） */
+/* 登录卡片：CSS glassmorphism */
 .login-card {
   display: grid;
   gap: 14px;

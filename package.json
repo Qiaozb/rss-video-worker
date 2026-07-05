@@ -3,13 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "render": "node remotion/render.mjs",
-    "build:console": "esbuild web/src/glass-island.jsx --bundle --format=esm --target=es2020 --jsx=automatic --outfile=web/glass-island.js --log-level=info"
+    "render": "node remotion/render.mjs"
   },
   "dependencies": {
     "@remotion/bundler": "^4.0.0",
     "@remotion/renderer": "^4.0.0",
-    "liquid-glass-react": "^1.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "remotion": "^4.0.0"
@@ -18,10 +16,7 @@
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
-    "esbuild": "^0.28.1",
     "typescript": "^5.5.0"
   },
-  "allowScripts": {
-    "esbuild@0.28.1": true
-  }
+  "allowScripts": {}
 }

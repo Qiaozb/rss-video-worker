@@ -24,8 +24,8 @@ function setOutput(message) {
     typeof message === "string" ? message : JSON.stringify(message, null, 2);
 }
 
-// Glass 岛通信桥（由 glass-island.js 在本模块之前初始化到 window.glassBridge）。
-// 若岛 bundle 加载失败，降级为空操作，避免拖垮控制台其余功能。
+// 控制台岛通信桥（由 src/islands.js 在本模块之前初始化到 window.glassBridge）。
+// 若 islands.js 加载失败，降级为空操作，避免拖垮控制台其余功能。
 const glassBridge =
   window.glassBridge || {
     set() {},

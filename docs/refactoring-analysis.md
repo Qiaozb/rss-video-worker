@@ -2,6 +2,7 @@
 
 > 分析日期：2026-06-30
 > 修订：2026-07-02（据代码核实修正事实与方案漏洞）
+> 修订：2026-07-04（补充双渲染引擎当前落地状态与后续重构边界）
 
 ## 项目现状总览
 
@@ -17,6 +18,14 @@
 > 注：`app/` 下**已有 8 个半抽出的模块**（见下文 §2），文档原版将其忽略，误把"业务逻辑全堆在 main.py"当作起点。本版已修正。
 
 **部署形态核实：** `Dockerfile` 为单进程 `uvicorn app.main:app`（无 gunicorn workers）。当前内存态并发模型（线程 + 全局 set）在单进程下可工作；但 `get_connection()`（`app/db.py:87`）每次新建连接、**无连接池、不复用**，SSE 轮询循环频繁查库下存在连接耗尽风险。多进程部署时全局 set 也会失效，需迁移到 DB 租约/消息队列。
+
+**2026-07-04 当前进展：**
+
+- 已新增基础双渲染入口：报告和定时计划可选择 `Remotion` 或 `FFmpeg 模板`。
+- 已新增 `app/ffmpeg_template.py`，作为轻量 FFmpeg 模板渲染路径；它不是 Playwright 截图序列方案，定位是当前阶段的快速兜底/轻量输出。
+- 已通过 Alembic 迁移把 `render_engine` 写入 `rss_video_job` 与 `schedule_configs`，前端报告管理、视频管理、定时计划页面已有对应展示/配置入口。
+- 报告管理页的渲染操作 UI 已改成紧凑布局：表格中显示紧凑渲染方式选择，右侧详情保留完整操作。
+- 双渲染引擎还没有抽象为正式 `RenderEngine` 接口，也没有实现自动 fallback、统一取消、统一进度协议；这些仍属于后续重构任务。
 
 ---
 
@@ -86,6 +95,7 @@ app/
 | `app/pipeline.py` | 138 | 有 `analyze_recent_rss_items`、`report_title_fallback` | pipeline 分析/报告标题等纯领域逻辑；任务执行、取消、恢复应进 `PipelineManager` |
 | `app/scheduler.py` | 111 | 有 `ScheduleConfig`、`next_run_after` | `_scheduler_loop`（`main.py:1236`） |
 | `app/remotion.py` | 153 | 有 `render_video`、`cancel_render` | 保持为 Remotion 进程适配器；`render_report_job`、`_render_worker_loop` 应进 `RenderManager` |
+| `app/ffmpeg_template.py` | — | 已新增轻量 FFmpeg 模板渲染路径 | 后续应收敛到统一 `RenderEngine` 接口，而不是在 `main.py` 中分支调用 |
 | `app/maintenance.py` | 270 | 有 `cleanup_*`、`maintenance_summary` | maintenance 路由的业务编排 |
 | `app/auth.py` | 212 | 有 `hash_password` 等 | auth 路由业务 |
 | `app/video_assets.py` | 124 | 有 `file_info`、`generate_cover_image` | video-assets 路由业务 |
@@ -102,7 +112,8 @@ app/
 ├── render_engines/
 │   ├── base.py              # RenderEngine 协议：render(props, output_path) / cancel(job_id)
 │   ├── remotion_engine.py   # 默认主引擎，封装现有 Remotion + FFmpeg 渲染
-│   └── playwright_engine.py # 后期备用引擎：Playwright 截图序列 + FFmpeg 合成
+│   ├── ffmpeg_template_engine.py # 当前已落地的轻量模板引擎，封装 app/ffmpeg_template.py
+│   └── playwright_engine.py # 远期备用引擎：Playwright 截图序列 + FFmpeg 合成
 ├── maintenance.py      # ← 归入 maintenance 业务编排
 ├── services/
 │   ├── render_manager.py   # 渲染队列/状态封装；归入 render_report_job、_render_worker_loop；按配置选择 RenderEngine
@@ -281,8 +292,28 @@ tests/
 | **P2** | DB 层集成测试（共享 test MySQL 或 testcontainers-MySQL） | 拆 db.py 的前置安全网；禁止 SQLite |
 | **P2.5** | 引入连接池 | 投入小、立即解决 SSE 连接耗尽，不应被压到 P3 |
 | **P2+** | 拆分 db.py（按领域 Repository） | 文件大，但"功能正确"未经验证（零测试 + 无事务），必须卡在 DB 集成测试之后 |
-| **P3** | 双渲染引擎抽象 | 保留 Remotion 主路径，同时为 Playwright + FFmpeg 兜底渲染预留接口，降低单一渲染链路失败风险 |
+| **P3（部分完成）** | 双渲染引擎抽象 | 已完成 Remotion / FFmpeg 模板的入口、持久化和页面选择；仍需抽象统一 RenderEngine、自动 fallback、统一取消与进度协议 |
 | **P3** | ORM/Query Builder | 投入大、收益长期 |
+
+## 当前完成度清单（2026-07-04）
+
+| 模块 | 状态 | 说明 |
+|---|---|---|
+| RSS 源、模型配置、提示词、定时计划的基础 CRUD | 已完成 | 页面已支持新增、修改、删除与列表管理 |
+| 自定义 RSS 分类 + 模型 + 提示词 + 定时计划组合 | 已完成基础版 | 定时任务可绑定分类、模型、提示词、TTS 和渲染方式 |
+| LLM 调用与结构化报告入库 | 已完成基础版 | 已有报告、新闻、TTS 队列与日志链路 |
+| TTS 配置与语音资产管理 | 已完成基础版 | 支持 TTS 配置、生成音频、试听与保存本地 |
+| 视频资产管理 | 已完成基础版 | 支持查看视频任务、下载、封面、删除等基础管理 |
+| Remotion 渲染路径 | 已完成并持续优化 | 已有 bundle 缓存、并发配置、硬件加速开关等 |
+| FFmpeg 模板渲染路径 | 已完成基础版 | 可作为轻量渲染方案，但尚未抽成正式引擎接口 |
+| 报告/定时计划选择渲染方式 | 已完成 | 页面和 DB 均已支持 `remotion` / `ffmpeg` |
+| 前端报告操作列 UI | 已完成本轮优化 | 表格内紧凑操作，详情区完整操作 |
+| 自动 fallback 渲染 | 未完成 | Remotion 失败后不会自动切换 FFmpeg |
+| Router / Service / Repository 分层 | 未完成 | `main.py`、`db.py` 仍是后续最大重构点 |
+| 连接池 | 未完成 | `get_connection()` 仍需升级 |
+| 自动数据库初始化 | 未完成 | 已写入重构要求，尚未实现 |
+| 测试体系 | 未完成 | 仍缺少 characterization、API、DB 集成测试 |
+| 多进程/云端队列化 | 未完成 | 当前仍以本地单进程线程队列为主 |
 
 ---
 
@@ -294,7 +325,7 @@ tests/
 |---|---|---|---|
 | 后端 API + 业务逻辑 | Python (FastAPI) | ~6500 行 | pymysql、requests、defusedxml |
 | 视频渲染 | Node.js (Remotion + React) | 148 行 | @remotion/bundler、@remotion/renderer |
-| 前端控制台 | Vanilla JS + esbuild | ~2000 行 | 无框架依赖 |
+| 前端控制台 | Vanilla JS（原生 ES Modules） | ~2000 行 | 无框架依赖、无构建步骤 |
 
 ### 后端 Python → 其他语言
 
@@ -314,15 +345,33 @@ tests/
 
 ### 视频渲染 Node.js → 其他
 
-**不建议直接替换 Remotion，但建议后期重构为双渲染引擎。** Remotion 绑定 React + Node.js 生态，当前模板、动画和画面结构都依赖它，直接替换等于重写整个视频生成管线。更稳妥的做法是保留 Remotion 作为主引擎，同时新增 Playwright + FFmpeg 作为备用引擎。
+**不建议直接替换 Remotion。当前已经完成双渲染入口的第一步：保留 Remotion 主路径，同时新增 `FFmpeg 模板`轻量路径。** Remotion 仍负责高保真 React 画面和动画；FFmpeg 模板路径用于在本机渲染成本较高、Remotion 不稳定或只需要简化版视频时快速产出。下一步重点不是继续在 `main.py` 里堆分支，而是把两条路径收敛到统一 `RenderEngine` 协议。
 
-#### 后期目标：双渲染引擎
+#### 当前已落地：基础双渲染入口
+
+| 能力 | 状态 | 说明 |
+|---|---|---|
+| 手动报告渲染选择引擎 | 已完成 | 报告管理页可选择 `Remotion` / `FFmpeg` 后触发渲染 |
+| 定时计划选择引擎 | 已完成 | 定时计划保存 `render_engine`，自动渲染时沿用该配置 |
+| 视频任务记录引擎 | 已完成 | `rss_video_job.render_engine` 记录本次任务使用的引擎 |
+| 前端展示引擎 | 已完成 | 报告管理、视频管理和定时计划可看到渲染方式 |
+| FFmpeg 模板引擎 | 已完成基础版 | `app/ffmpeg_template.py` 直接生成模板视频，定位是轻量输出 |
+| 自动 fallback | 未完成 | Remotion 失败后不会自动切换 FFmpeg，需要后续补 |
+| 统一引擎接口 | 未完成 | 现在仍是业务层分支调用，需抽成 `RenderEngine` |
+| Playwright 截图序列备用引擎 | 未完成 | 仍是远期方案，不等同于当前 FFmpeg 模板 |
+
+#### 后续目标：正式 RenderEngine 抽象
 
 ```
 RenderManager
   -> RenderEngine(remotion)
       -> Remotion renderMedia
       -> FFmpeg / Remotion compositor 输出 MP4
+
+RenderManager
+  -> RenderEngine(ffmpeg_template)
+      -> 根据 props 生成静态/轻动画模板视频
+      -> FFmpeg 合成 TTS 音频输出 MP4
 
 RenderManager
   -> RenderEngine(playwright_ffmpeg)
@@ -338,7 +387,8 @@ RenderManager
 | `RenderManager` | 领取任务、生成 props、生成 TTS、写进度、处理取消和失败重试 |
 | `RenderEngine` | 只负责把 props + 音频资源渲染成一个视频文件 |
 | `RemotionEngine` | 当前默认路径，复用现有 Remotion 模板和 bundle 缓存 |
-| `PlaywrightFfmpegEngine` | 备用路径，用浏览器截图序列规避 Remotion renderMedia/Chromium 端口链路不稳定问题 |
+| `FfmpegTemplateEngine` | 当前已落地基础版，适合快速、低成本、画面要求较低的视频 |
+| `PlaywrightFfmpegEngine` | 远期备用路径，用浏览器截图序列规避 Remotion renderMedia/Chromium 端口链路不稳定问题 |
 
 #### 配置建议
 
@@ -346,16 +396,17 @@ RenderManager
 
 ```env
 VIDEO_RENDER_ENGINE=remotion
-VIDEO_RENDER_FALLBACK_ENGINE=playwright_ffmpeg
+VIDEO_RENDER_FALLBACK_ENGINE=ffmpeg_template
 VIDEO_RENDER_ENABLE_FALLBACK=1
 ```
 
 运行策略：
 
-1. 默认走 `remotion`。
+1. 默认走计划或报告指定的 `render_engine`；未指定时使用 `VIDEO_RENDER_ENGINE`。
 2. Remotion 出现可重试错误时，先走一次 safe 模式：低并发、禁用硬件加速、重新 bundle。
-3. safe 模式仍失败时，如果 `VIDEO_RENDER_ENABLE_FALLBACK=1`，自动切到 `playwright_ffmpeg`。
-4. 两个引擎都失败时，任务才最终标记 `failed`。
+3. safe 模式仍失败时，如果 `VIDEO_RENDER_ENABLE_FALLBACK=1`，自动切到 `VIDEO_RENDER_FALLBACK_ENGINE`，默认建议先用 `ffmpeg_template`。
+4. 远期可把 fallback 从 `ffmpeg_template` 替换为 `playwright_ffmpeg`。
+5. 所有引擎都失败时，任务才最终标记 `failed`。
 
 #### Playwright + FFmpeg 备用引擎的实现步骤
 
@@ -368,9 +419,9 @@ VIDEO_RENDER_ENABLE_FALLBACK=1
 
 #### 验收标准
 
-- 同一个 `props.json` 可被 `remotion` 和 `playwright_ffmpeg` 两个引擎消费。
+- 同一个 `props.json` 可被 `remotion`、`ffmpeg_template` 和未来 `playwright_ffmpeg` 引擎消费。
 - 前端视频管理页面可看到使用的渲染引擎和失败原因。
-- Remotion 故障时，备用引擎能生成可播放 MP4。
+- Remotion 故障时，备用引擎能自动生成可播放 MP4。
 - 备用引擎输出的视频分辨率、音频时长、字幕内容与主引擎保持一致。
 - 取消任务时能同时取消 Remotion、Playwright、Chrome 和 FFmpeg 子进程。
 
@@ -379,7 +430,7 @@ VIDEO_RENDER_ENABLE_FALLBACK=1
 **这个可以考虑，且投入相对可控：**
 
 - 当前 `web/app.js` 1769 行，手工管理 DOM 和状态，已经接近 vanilla JS 的维护极限
-- 项目已经有 esbuild + JSX 构建管线（`glass-island.jsx`），迁移到 React 的基础设施已就绪
+- 项目原本有一层 React + liquid-glass-react 的"玻璃岛"（`glass-island.jsx` 经 esbuild 打包），但页面三个槽实际都未使用 `<LiquidGlass>`，bundle 形同死代码，现已移除回归纯 JS（`web/src/islands.js`）。若后续要迁移到 React，需重新引入构建管线
 - 但如果近期不打算大改前端交互，维持现状也完全可以
 
 ### 换语言的合适时机
@@ -402,7 +453,7 @@ VIDEO_RENDER_ENABLE_FALLBACK=1
 
 ## 额外观察
 
-- `web/app.js`（1769 行）也值得模块化拆分，但优先级低于后端。当前 esbuild 已配置好，可以渐进地将 `app.js` 拆分为 ES modules 并利用已有的构建管线。
+- `web/app.js`（1769 行）也值得模块化拆分，但优先级低于后端。当前为原生 ES Modules、无构建步骤，可以渐进地将 `app.js` 拆分为更多 `web/src/*.js` 模块直接由浏览器加载。
 - `app/main.py` 从 `app.db` 导入 115 个符号，是 `db.py` 拆分紧迫性的直接证据。
 - 渲染队列和 pipeline 执行使用原生 `threading.Thread`，未来如需多进程部署，需要迁移到数据库租约或消息队列。
 - `@app.on_event("startup"/"shutdown")` 为已废弃写法，§1 拆分时应顺带迁移到 `lifespan` context manager。
