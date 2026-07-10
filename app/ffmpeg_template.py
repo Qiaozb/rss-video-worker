@@ -293,14 +293,14 @@ def _news_slide(props: Dict[str, Any], item: Dict[str, Any], index: int, width: 
     return _base_html(width, height, body)
 
 
-def _write_slide_html(scene: Dict[str, Any], html_path: Path, width: int, height: int) -> None:
+def _write_slide_svg(scene: Dict[str, Any], svg_path: Path, width: int, height: int) -> None:
     if scene["kind"] == "intro":
         content = _intro_svg(scene["props"], width, height)
     elif scene["kind"] == "outro":
         content = _outro_svg(scene["props"], width, height)
     else:
         content = _news_svg(scene["props"], scene["item"], scene["index"], width, height)
-    html_path.write_text(content, encoding="utf-8")
+    svg_path.write_text(content, encoding="utf-8")
 
 
 def _wrap_text(value: Any, max_chars: int, max_lines: int) -> List[str]:
@@ -342,13 +342,14 @@ def _svg_text(
         tspan_y = y + index * dy
         tspans.append(f'<tspan x="{x}" y="{tspan_y}">{_escape(line)}</tspan>')
     return (
-        f'<text font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Arial, sans-serif" '
+        f'<text font-family="PingFang SC, Hiragino Sans GB, Noto Sans CJK SC, Noto Sans SC, Source Han Sans SC, Microsoft YaHei, Arial, sans-serif" '
         f'font-size="{size}" font-weight="{weight}" fill="{fill}">{"".join(tspans)}</text>'
     )
 
 
 def _svg_frame(width: int, height: int, body: str) -> str:
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
   <defs>
     <radialGradient id="warm" cx="8%" cy="0%" r="48%">
       <stop offset="0%" stop-color="#d26a4a" stop-opacity="0.16"/>
@@ -434,7 +435,29 @@ def _news_svg(props: Dict[str, Any], item: Dict[str, Any], index: int, width: in
     return _svg_frame(width, height, body)
 
 
-def _capture_slide(_: str, svg_path: Path, png_path: Path, width: int, height: int) -> None:
+def _capture_slide_with_chrome(svg_path: Path, png_path: Path, width: int, height: int) -> None:
+    browser = _find_browser()
+    result = subprocess.run(
+        [
+            browser,
+            "--headless=new",
+            "--disable-gpu",
+            "--hide-scrollbars",
+            "--force-device-scale-factor=1",
+            f"--window-size={width},{height}",
+            f"--screenshot={png_path}",
+            svg_path.resolve().as_uri(),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    if result.returncode != 0 or not png_path.exists():
+        details = (result.stderr or result.stdout or "").strip()
+        raise RuntimeError(f"Failed to capture FFmpeg template slide via Chrome: {details}")
+
+
+def _capture_slide_with_quicklook(svg_path: Path, png_path: Path, width: int, height: int) -> None:
     qlmanage = shutil.which("qlmanage")
     if not qlmanage:
         raise RuntimeError("qlmanage command not found; FFmpeg template screenshots require macOS Quick Look")
@@ -452,6 +475,20 @@ def _capture_slide(_: str, svg_path: Path, png_path: Path, width: int, height: i
     if png_path.exists():
         png_path.unlink()
     generated_path.rename(png_path)
+
+
+def _capture_slide(_: str, svg_path: Path, png_path: Path, width: int, height: int) -> None:
+    png_path.unlink(missing_ok=True)
+    try:
+        _capture_slide_with_chrome(svg_path, png_path, width, height)
+    except Exception as chrome_error:
+        try:
+            _capture_slide_with_quicklook(svg_path, png_path, width, height)
+        except Exception as quicklook_error:
+            raise RuntimeError(
+                "Failed to capture FFmpeg template slide. "
+                f"Chrome error: {chrome_error}; Quick Look error: {quicklook_error}"
+            ) from quicklook_error
 
 
 def _ffmpeg_codec_args(codec: str) -> List[str]:
@@ -625,12 +662,12 @@ def render_ffmpeg_template(
     output_path = work_dir / "final.mp4"
     template_dir = work_dir / "ffmpeg-template"
     slides_dir = template_dir / "slides"
-    html_dir = template_dir / "html"
+    svg_dir = template_dir / "svg"
     segments_dir = template_dir / "segments"
 
     if template_dir.exists():
         shutil.rmtree(template_dir)
-    html_dir.mkdir(parents=True, exist_ok=True)
+    svg_dir.mkdir(parents=True, exist_ok=True)
     slides_dir.mkdir(parents=True, exist_ok=True)
     segments_dir.mkdir(parents=True, exist_ok=True)
     output_path.unlink(missing_ok=True)
@@ -648,11 +685,11 @@ def render_ffmpeg_template(
             on_progress(min(completed_steps / total_steps, 0.99))
 
     for index, scene in enumerate(scenes):
-        html_path = html_dir / f"slide_{index:03d}.html"
+        svg_path = svg_dir / f"slide_{index:03d}.svg"
         png_path = slides_dir / f"slide_{index:03d}.png"
         segment_path = segments_dir / f"segment_{index:03d}.mp4"
-        _write_slide_html(scene, html_path, width, height)
-        _capture_slide("", html_path, png_path, width, height)
+        _write_slide_svg(scene, svg_path, width, height)
+        _capture_slide("", svg_path, png_path, width, height)
         completed_steps += 1
         tick()
         _render_segment(

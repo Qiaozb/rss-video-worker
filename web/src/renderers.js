@@ -264,7 +264,10 @@ export function videoJobActions(job) {
     ? `<a class="button-link" href="${job.video_download_url}" target="_blank" rel="noreferrer">下载</a>`
     : "";
   const cover = job.cover_download_url
-    ? `<a class="button-link" href="${job.cover_download_url}" target="_blank" rel="noreferrer">封面</a>`
+    ? `<a class="button-link" href="${job.cover_download_url}" target="_blank" rel="noreferrer">封面16:9</a>`
+    : "";
+  const cover4x3 = job.cover_4x3_download_url
+    ? `<a class="button-link" href="${job.cover_4x3_download_url}" target="_blank" rel="noreferrer">封面4:3</a>`
     : "";
   const cancel = ["pending", "rendering"].includes(job.status || "")
     ? `<button class="link-button" data-cancel-video-job="${job.id}" type="button" aria-label="取消视频任务 ${job.id}">取消</button>`
@@ -275,6 +278,7 @@ export function videoJobActions(job) {
     <button class="link-button" data-delete-video-assets="${job.report_id}" type="button" aria-label="删除报告 ${job.report_id} 的视频产物">删除产物</button>
     ${download}
     ${cover}
+    ${cover4x3}
     ${cancel}
   `;
 }

@@ -42,12 +42,18 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
+# The checked-in plist is a portable template. Materialize checkout-specific
+# paths on every start so moving or renaming the repository cannot leave
+# launchd pointing at an old checkout.
+.venv/bin/python scripts/render-launchd-plist.py \
+  "$SOURCE_PLIST" "$INSTALLED_PLIST" "$ROOT_DIR"
+
+# launchd does not reload an already bootstrapped plist from disk. Remove the
+# old registration first, then bootstrap the freshly materialized config.
 if launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1; then
-  launchctl kickstart -k "$DOMAIN/$LABEL"
-else
-  cp "$SOURCE_PLIST" "$INSTALLED_PLIST"
-  launchctl bootstrap "$DOMAIN" "$INSTALLED_PLIST"
+  launchctl bootout "$DOMAIN/$LABEL"
 fi
+launchctl bootstrap "$DOMAIN" "$INSTALLED_PLIST"
 
 for _ in {1..30}; do
   if curl -fsS http://127.0.0.1:8000/health >/dev/null 2>&1; then

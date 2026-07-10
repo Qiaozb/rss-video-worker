@@ -7,7 +7,7 @@
 
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/qzzzzb_h/projects/codex/dify-rss/video-worker/.venv/bin/python</string>
+    <string>__VIDEO_WORKER_ROOT__/.venv/bin/python</string>
     <string>-m</string>
     <string>uvicorn</string>
     <string>app.main:app</string>
@@ -18,7 +18,7 @@
   </array>
 
   <key>WorkingDirectory</key>
-  <string>/Users/qzzzzb_h/projects/codex/dify-rss/video-worker</string>
+  <string>__VIDEO_WORKER_ROOT__</string>
 
   <key>EnvironmentVariables</key>
   <dict>
@@ -36,8 +36,8 @@
   <string>Background</string>
 
   <key>StandardOutPath</key>
-  <string>/Users/qzzzzb_h/projects/codex/dify-rss/video-worker/logs/video-worker.log</string>
+  <string>__VIDEO_WORKER_ROOT__/logs/video-worker.log</string>
   <key>StandardErrorPath</key>
-  <string>/Users/qzzzzb_h/projects/codex/dify-rss/video-worker/logs/video-worker-error.log</string>
+  <string>__VIDEO_WORKER_ROOT__/logs/video-worker-error.log</string>
 </dict>
 </plist>
