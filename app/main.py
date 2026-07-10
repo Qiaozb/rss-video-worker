@@ -128,7 +128,14 @@ from app.llm import LLMConfigurationError, test_model_config
 from app.maintenance import cleanup_artifacts, cleanup_database_logs, maintenance_summary
 from app.rss import collect_enabled_sources, collect_one_source, preview_source
 from app.tts import TTSClient, audio_duration_seconds, normalize_tts_text
-from app.video_assets import file_info, generate_cover_image, is_within, remove_report_assets, safe_output_path
+from app.video_assets import (
+    file_info,
+    generate_cover_images,
+    is_within,
+    remove_report_assets,
+    report_output_dir,
+    safe_output_path,
+)
 
 app = FastAPI(title="Game Daily Video Worker")
 
@@ -534,6 +541,13 @@ def _enrich_video_asset(item: Dict[str, Any]) -> Dict[str, Any]:
     item["cover_file_path"] = cover["path"]
     item["video_download_url"] = f"/videos/{report_id}" if video["exists"] else None
     item["cover_download_url"] = f"/video-assets/{report_id}/cover" if cover["exists"] else None
+    cover_4x3_path = report_output_dir(report_id) / "cover_4x3.jpg"
+    item["cover_4x3_file_exists"] = cover_4x3_path.exists()
+    item["cover_4x3_download_url"] = (
+        f"/video-assets/{report_id}/cover/4x3"
+        if cover_4x3_path.exists()
+        else None
+    )
     return item
 
 
@@ -2636,8 +2650,11 @@ def generate_video_cover(report_id: int) -> Dict[str, Any]:
     row = get_video_job_by_report_id(report_id)
     if not row:
         raise HTTPException(status_code=404, detail="Video job not found")
+    report = get_report(report_id)
+    news = list_report_news(report_id)
     try:
-        cover_path = generate_cover_image(report_id, row.get("video_path"))
+        cover_paths = generate_cover_images(report_id, row.get("video_path"), report=report, news=news)
+        cover_path = cover_paths["16x9"]
         set_video_job_cover_path(report_id, str(cover_path))
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -2648,6 +2665,8 @@ def generate_video_cover(report_id: int) -> Dict[str, Any]:
         "report_id": report_id,
         "cover_path": str(cover_path),
         "cover_download_url": f"/video-assets/{report_id}/cover",
+        "cover_4x3_path": str(cover_paths["4x3"]),
+        "cover_4x3_download_url": f"/video-assets/{report_id}/cover/4x3",
         "status": "cover_generated",
     }
 
@@ -2664,6 +2683,21 @@ def video_cover(report_id: int):
     if path is None or not path.exists():
         raise HTTPException(status_code=404, detail="Cover file not found")
     return FileResponse(path, media_type="image/jpeg", filename=f"game_daily_report_{report_id}_cover.jpg")
+
+
+@app.get("/video-assets/{report_id}/cover/4x3")
+def video_cover_4x3(report_id: int):
+    row = get_video_job_by_report_id(report_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Video job not found")
+    path = report_output_dir(report_id) / "cover_4x3.jpg"
+    try:
+        resolved = safe_output_path(str(path))
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    if resolved is None or not resolved.exists():
+        raise HTTPException(status_code=404, detail="4:3 cover file not found")
+    return FileResponse(resolved, media_type="image/jpeg", filename=f"game_daily_report_{report_id}_cover_4x3.jpg")
 
 
 @app.delete("/video-assets/{report_id}")
