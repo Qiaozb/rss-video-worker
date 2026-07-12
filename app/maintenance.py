@@ -110,7 +110,6 @@ def filesystem_health() -> Dict[str, Any]:
 
 
 def maintenance_summary() -> Dict[str, Any]:
-    generated_audio_dir = settings.remotion_public_dir / "generated"
     log_dir = settings.project_root / "logs"
     cache_dir = settings.project_root / ".cache"
     remotion_cache_dir = settings.remotion_root / ".cache"
@@ -118,7 +117,7 @@ def maintenance_summary() -> Dict[str, Any]:
     directories = [
         directory_stats("输出目录", settings.output_dir),
         directory_stats("成品视频", settings.output_dir, ("*.mp4",)),
-        directory_stats("TTS 音频缓存", generated_audio_dir, ("*.wav",)),
+        directory_stats("TTS 音频缓存", settings.output_dir, ("*.wav",)),
         directory_stats("日志", log_dir, ("*.log",)),
         directory_stats("Worker 缓存", cache_dir),
         directory_stats("Remotion 缓存", remotion_cache_dir),
@@ -149,7 +148,7 @@ def cleanup_rules(
         ),
         CleanupRule(
             category="audio",
-            root=settings.remotion_public_dir / "generated",
+            root=settings.output_dir,
             patterns=("*.wav",),
             retention_days=audio_retention_days,
         ),
@@ -241,7 +240,6 @@ def cleanup_artifacts(
 
         for root in {
             settings.output_dir,
-            settings.remotion_public_dir / "generated",
             settings.project_root / ".cache",
             settings.remotion_root / ".cache",
         }:

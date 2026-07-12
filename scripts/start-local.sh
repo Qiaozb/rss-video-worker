@@ -8,7 +8,7 @@ SOURCE_PLIST="$ROOT_DIR/launchd/$LABEL.plist"
 INSTALLED_PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 
 cd "$ROOT_DIR"
-mkdir -p logs run output remotion/public/generated "$HOME/Library/LaunchAgents"
+mkdir -p logs run output "$HOME/Library/LaunchAgents"
 
 while IFS= read -r pid; do
   [[ -z "$pid" ]] && continue

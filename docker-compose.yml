@@ -21,4 +21,3 @@ services:
       VIDEO_FPS: "30"
     volumes:
       - ./output:/data/output
-      - ./remotion/public/generated:/app/remotion/public/generated

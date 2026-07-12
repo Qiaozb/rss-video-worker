@@ -31,7 +31,14 @@ def report_output_dir(report_id: int) -> Path:
 
 
 def report_audio_dir(report_id: int) -> Path:
-    return settings.remotion_public_dir / "generated" / f"report_{report_id}"
+    return report_output_dir(report_id) / "audio"
+
+
+def report_audio_src(report_id: int, filename: str) -> str:
+    safe_filename = Path(filename).name
+    if safe_filename != filename:
+        raise ValueError("audio filename must not contain a directory")
+    return f"report_{report_id}/audio/{safe_filename}"
 
 
 def _browser_candidates() -> List[str]:
@@ -371,17 +378,26 @@ def remove_report_assets(report_id: int, delete_audio: bool = True) -> Dict[str,
     removed = []
     errors = []
 
-    for path in [report_output_dir(report_id), report_audio_dir(report_id) if delete_audio else None]:
-        if path is None:
-            continue
+    output_dir = report_output_dir(report_id)
+    audio_dir = report_audio_dir(report_id)
+    if delete_audio:
+        targets = [output_dir]
+    elif output_dir.exists():
+        targets = [path for path in output_dir.iterdir() if path != audio_dir]
+    else:
+        targets = []
+
+    for path in targets:
         try:
             resolved = path.expanduser().resolve()
-            allowed_roots = [settings.output_dir, settings.remotion_public_dir / "generated"]
-            if not any(is_within(resolved, root) for root in allowed_roots):
+            if not is_within(resolved, settings.output_dir):
                 errors.append({"path": str(path), "error": "path outside managed directories"})
                 continue
             if resolved.exists():
-                shutil.rmtree(resolved)
+                if resolved.is_dir():
+                    shutil.rmtree(resolved)
+                else:
+                    resolved.unlink()
                 removed.append(str(resolved))
         except OSError as exc:
             errors.append({"path": str(path), "error": str(exc)})

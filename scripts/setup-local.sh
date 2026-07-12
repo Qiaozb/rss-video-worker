@@ -28,7 +28,7 @@ fi
 .venv/bin/python -m pip install -r requirements.txt
 npm install --legacy-peer-deps --no-audit --no-fund
 
-mkdir -p output remotion/public/generated logs run
+mkdir -p output logs run
 
 if [[ ! -f .env ]]; then
   cp .env.example .env

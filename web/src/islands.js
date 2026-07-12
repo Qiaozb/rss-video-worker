@@ -150,7 +150,7 @@ function mountToast(host) {
     host.innerHTML = current
       .map(
         (t, i) =>
-          `<div class="toast ${escapeHTML(t.type || "info")}" data-idx="${i}" role="status">` +
+          `<div class="toast ${escapeHTML(t.type || "info")}" data-idx="${i}" role="${t.type === "fail" ? "alert" : "status"}">` +
           `<span class="toast-msg">${escapeHTML(t.msg)}</span>` +
           `</div>`,
       )

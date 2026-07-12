@@ -40,9 +40,13 @@ def _resolve_public_audio(src: str) -> Optional[Path]:
         return None
     path = Path(src)
     if path.is_absolute():
-        return path if path.exists() else None
-    public_path = settings.remotion_public_dir / src
-    return public_path if public_path.exists() else None
+        candidate = path.expanduser().resolve()
+    else:
+        candidate = (settings.output_dir / path).resolve()
+    output_root = settings.output_dir.expanduser().resolve()
+    if candidate != output_root and output_root not in candidate.parents:
+        return None
+    return candidate if candidate.exists() else None
 
 
 def _scene_duration(value: Any, minimum: float) -> float:

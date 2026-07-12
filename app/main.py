@@ -133,6 +133,8 @@ from app.video_assets import (
     generate_cover_images,
     is_within,
     remove_report_assets,
+    report_audio_dir,
+    report_audio_src,
     report_output_dir,
     safe_output_path,
 )
@@ -394,8 +396,8 @@ def audio_cache_name(prefix: str, text: str) -> str:
     return f"{prefix}_{digest}.wav"
 
 
-def _tts_audio_public_dir(report_id: int):
-    audio_dir = settings.remotion_public_dir / "generated" / f"report_{report_id}"
+def _tts_audio_dir(report_id: int) -> Path:
+    audio_dir = report_audio_dir(report_id)
     audio_dir.mkdir(parents=True, exist_ok=True)
     return audio_dir
 
@@ -409,7 +411,7 @@ def generate_tts_item_audio(item, force: bool = False) -> Dict[str, Any]:
     if not narration:
         raise RuntimeError(f"TTS item has no narration: queue_id={item.id}")
 
-    audio_dir = _tts_audio_public_dir(item.report_id)
+    audio_dir = _tts_audio_dir(item.report_id)
     audio_filename = _tts_audio_filename(item)
     audio_path = audio_dir / audio_filename
 
@@ -443,15 +445,15 @@ def generate_tts_item_audio(item, force: bool = False) -> Dict[str, Any]:
 def _safe_tts_audio_path(item) -> Path:
     candidate = Path(item.tts_audio_path) if item.tts_audio_path else None
     if candidate is None:
-        fallback = _tts_audio_public_dir(item.report_id) / _tts_audio_filename(item)
+        fallback = _tts_audio_dir(item.report_id) / _tts_audio_filename(item)
         candidate = fallback if fallback.exists() else None
     if candidate is None:
         raise HTTPException(status_code=404, detail="TTS audio has not been generated")
 
     resolved = candidate.expanduser().resolve()
-    public_root = settings.remotion_public_dir.expanduser().resolve()
-    if public_root not in [resolved, *resolved.parents]:
-        raise HTTPException(status_code=403, detail="TTS audio path is outside public directory")
+    output_root = settings.output_dir.expanduser().resolve()
+    if output_root not in [resolved, *resolved.parents]:
+        raise HTTPException(status_code=403, detail="TTS audio path is outside output directory")
     if not resolved.exists():
         raise HTTPException(status_code=404, detail="TTS audio file not found")
     return resolved
@@ -468,15 +470,15 @@ def _tts_audio_file_info(path_value: Optional[str]) -> Dict[str, Any]:
         }
     try:
         path = Path(path_value).expanduser().resolve()
-        public_root = settings.remotion_public_dir.expanduser().resolve()
-        if not is_within(path, public_root):
+        output_root = settings.output_dir.expanduser().resolve()
+        if not is_within(path, output_root):
             return {
                 "exists": False,
                 "path": path_value,
                 "size_bytes": 0,
                 "size_mb": 0,
                 "duration_seconds": None,
-                "error": "path outside public directory",
+                "error": "path outside output directory",
             }
     except Exception:
         return {
@@ -2487,7 +2489,7 @@ def render_report_job(report_id: int) -> None:
         _raise_if_cancelled(report_id)
 
         report_dir = settings.output_dir / f"report_{report_id}"
-        remotion_audio_dir = _tts_audio_public_dir(report_id)
+        audio_dir = _tts_audio_dir(report_id)
         report_dir.mkdir(parents=True, exist_ok=True)
 
         report_meta = get_report(report_id) or {}
@@ -2508,7 +2510,7 @@ def render_report_job(report_id: int) -> None:
             f"今天为你精选{len(items)}条{domain_label}重点消息。"
         )
         intro_audio_filename = audio_cache_name("intro", intro_narration)
-        intro_audio_path = remotion_audio_dir / intro_audio_filename
+        intro_audio_path = audio_dir / intro_audio_filename
         set_video_job_progress(report_id, 4, "生成开场音频")
         if not intro_audio_path.exists():
             intro_duration = tts_client.synthesize(intro_narration, intro_audio_path)
@@ -2544,14 +2546,14 @@ def render_report_job(report_id: int) -> None:
                     "reserveReason": item.reserve_reason or "",
                     "link": item.link or "",
                     "voiceover": normalize_tts_text(narration),
-                    "audioSrc": f"generated/report_{report_id}/{audio_filename}",
+                    "audioSrc": report_audio_src(report_id, audio_filename),
                     "duration": duration,
                 }
             )
 
         outro_narration = f"以上就是今天的{domain_label}日报，感谢收看，我们下期再见。"
         outro_audio_filename = audio_cache_name("outro", outro_narration)
-        outro_audio_path = remotion_audio_dir / outro_audio_filename
+        outro_audio_path = audio_dir / outro_audio_filename
         set_video_job_progress(report_id, 76, "生成结束音频")
         if not outro_audio_path.exists():
             outro_duration = tts_client.synthesize(outro_narration, outro_audio_path)
@@ -2565,10 +2567,10 @@ def render_report_job(report_id: int) -> None:
             "title": title,
             "date": datetime.now().strftime("%Y-%m-%d"),
             "introVoiceover": intro_narration,
-            "introAudioSrc": f"generated/report_{report_id}/{intro_audio_filename}",
+            "introAudioSrc": report_audio_src(report_id, intro_audio_filename),
             "introDuration": intro_duration,
             "outroVoiceover": outro_narration,
-            "outroAudioSrc": f"generated/report_{report_id}/{outro_audio_filename}",
+            "outroAudioSrc": report_audio_src(report_id, outro_audio_filename),
             "outroDuration": outro_duration,
             "fps": settings.video_fps,
             "width": settings.video_width,

@@ -26,7 +26,7 @@ COPY tsconfig.json ./
 
 ENV REMOTION_BROWSER_EXECUTABLE=/usr/bin/chromium
 ENV REMOTION_ROOT=/app/remotion
-ENV REMOTION_PUBLIC_DIR=/app/remotion/public
+ENV REMOTION_PUBLIC_DIR=/data/output
 ENV OUTPUT_DIR=/data/output
 ENV LANG=C.UTF-8
 

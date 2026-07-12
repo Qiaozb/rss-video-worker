@@ -173,6 +173,7 @@ def _run_render_process(
 ) -> Path:
     env = os.environ.copy()
     env.update(env_overrides)
+    env["REMOTION_PUBLIC_DIR"] = str(settings.output_dir)
     estimated_video_seconds = _estimate_video_seconds(props_path)
     started_at = time.monotonic()
     logger.info(

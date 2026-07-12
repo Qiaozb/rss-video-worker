@@ -1,5 +1,6 @@
 import { state } from "./src/state.js?v=20260704-report-action-ui";
 import { configureApi, api } from "./src/api.js?v=20260704-report-action-ui";
+import { setBusy } from "./src/action-feedback.js?v=20260710-cover-feedback";
 import { $, escapeHTML, fmt, shortText, statusClass } from "./src/utils.js?v=20260704-report-action-ui";
 import {
   isTerminalRun,
@@ -61,14 +62,6 @@ function showToast(message, type = "info", timeout = 3200) {
     toastTimers.set(id, setTimeout(() => dismissToast(id), timeout));
   }
   return () => dismissToast(id);
-}
-
-function setBusy(element, busy) {
-  if (!element) {
-    return;
-  }
-  element.toggleAttribute("disabled", busy);
-  element.classList.toggle("is-busy", busy);
 }
 
 function showLanding() {
@@ -1474,10 +1467,36 @@ function bindActions() {
 
     const generateCoverReportId = target.dataset.generateCover;
     if (generateCoverReportId) {
-      const result = await api(`/video-assets/${generateCoverReportId}/cover`, { method: "POST" });
-      await refreshVideos();
-      await refreshReports();
-      setOutput(result);
+      setBusy(target, true, { label: "生成中…" });
+      const dismissGeneratingToast = showToast(
+        `正在为报告 #${generateCoverReportId} 生成 16:9 和 4:3 封面，请稍候…`,
+        "info",
+        0,
+      );
+      try {
+        const result = await api(`/video-assets/${generateCoverReportId}/cover`, { method: "POST" });
+        dismissGeneratingToast();
+        showToast(`报告 #${generateCoverReportId} 封面生成完成。`, "ok", 5000);
+        setOutput(result);
+
+        try {
+          await Promise.all([refreshVideos(), refreshReports()]);
+          if (state.selectedReportId === Number(generateCoverReportId)) {
+            await loadReportDetail(generateCoverReportId);
+          }
+        } catch (refreshError) {
+          console.error("[generate-cover-refresh] error:", refreshError);
+          showToast("封面已生成，但列表刷新失败，请手动刷新。", "info", 6000);
+        }
+      } catch (coverError) {
+        dismissGeneratingToast();
+        const message = coverError.message || "未知错误";
+        showToast(`封面生成失败：${message}`, "fail", 8000);
+        setOutput(`❌ 封面生成失败：${message}`);
+      } finally {
+        dismissGeneratingToast();
+        setBusy(target, false);
+      }
       return;
     }
 

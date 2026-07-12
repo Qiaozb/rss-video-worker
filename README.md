@@ -267,6 +267,12 @@ while true; do clear; curl -s http://127.0.0.1:8000/jobs/1; sleep 2; done
 output/report_<report_id>/final.mp4
 ```
 
+TTS 音频缓存位置：
+
+```text
+output/report_<report_id>/audio/*.wav
+```
+
 ## RSS 采集
 
 新增或更新 RSS 源：

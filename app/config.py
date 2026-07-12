@@ -45,9 +45,6 @@ class Settings:
 
     output_dir: Path = Path(os.getenv("OUTPUT_DIR", str(PROJECT_ROOT / "output"))).expanduser().resolve()
     remotion_root: Path = Path(os.getenv("REMOTION_ROOT", str(PROJECT_ROOT / "remotion"))).expanduser().resolve()
-    remotion_public_dir: Path = Path(
-        os.getenv("REMOTION_PUBLIC_DIR", str(PROJECT_ROOT / "remotion" / "public"))
-    ).expanduser().resolve()
 
     video_width: int = int(os.getenv("VIDEO_WIDTH", "1920"))
     video_height: int = int(os.getenv("VIDEO_HEIGHT", "1080"))

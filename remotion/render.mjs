@@ -15,7 +15,9 @@ if (!propsPath || !outputPath) {
 const inputProps = JSON.parse(fs.readFileSync(propsPath, "utf-8"));
 const renderStartedAt = Date.now();
 const entryPoint = path.resolve("remotion/src/index.tsx");
-const publicDir = path.resolve("remotion/public");
+const publicDir = path.resolve(
+  process.env.REMOTION_PUBLIC_DIR || "output",
+);
 const cacheRoot = path.resolve(".cache");
 const bundleDir = path.join(cacheRoot, "remotion-bundle");
 const bundleHashPath = path.join(cacheRoot, "remotion-bundle.sha256");
@@ -77,6 +79,7 @@ const collectFiles = (target) => {
 
 const bundleFingerprint = () => {
   const hash = crypto.createHash("sha256");
+  hash.update(`publicDir:${publicDir}\n`);
   const inputs = [
     path.resolve("remotion/src"),
     path.resolve("package.json"),
