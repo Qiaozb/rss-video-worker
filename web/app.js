@@ -1,6 +1,10 @@
 import { state } from "./src/state.js?v=20260704-report-action-ui";
 import { configureApi, api } from "./src/api.js?v=20260704-report-action-ui";
 import { setBusy } from "./src/action-feedback.js?v=20260710-cover-feedback";
+import {
+  enterConsoleAfterLogin,
+  initializeConsole,
+} from "./src/auth-navigation.js?v=20260718-login-navigation";
 import { $, escapeHTML, fmt, shortText, statusClass } from "./src/utils.js?v=20260704-report-action-ui";
 import {
   isTerminalRun,
@@ -734,10 +738,12 @@ function bindForms() {
       });
       state.auth = data;
       glassBridge.set("login", { error: "" });
-      hideLanding();
-      await refreshAll();
+      await enterConsoleAfterLogin({
+        activateOverview: () => document.querySelector('[data-tab="overview"]').click(),
+        showConsole: hideLanding,
+        refreshData: refreshAll,
+      });
       setOutput("登录成功。");
-      document.querySelector('[data-tab="overview"]').click();
       showToast(`登录成功，欢迎 ${data.username || "admin"}`, "ok");
     } catch (loginError) {
       const msg = loginError.message || "登录失败";
@@ -1818,12 +1824,12 @@ async function boot() {
   bindForms();
   bindActions();
   const canLoad = await refreshAuth();
-  restoreActiveTab();
-  if (canLoad) {
-    await refreshAll();
-  } else {
-    await refreshHealth();
-  }
+  await initializeConsole({
+    canLoad,
+    restoreActiveTab,
+    refreshData: refreshAll,
+    refreshPublicHealth: refreshHealth,
+  });
   window.setInterval(async () => {
     await refreshHealth();
     if (state.auth.auth_enabled && !state.auth.authenticated) {
