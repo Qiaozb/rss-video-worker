@@ -6,7 +6,7 @@ import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 from app.config import settings
 
@@ -507,6 +507,7 @@ def _generate_cover_variant(
     width: int,
     height: int,
     stem: str,
+    aliases: Sequence[str] = (),
 ) -> Path:
     output_dir = report_output_dir(report_id)
     cover_path = output_dir / f"{stem}.jpg"
@@ -518,6 +519,18 @@ def _generate_cover_variant(
     cover_path.unlink(missing_ok=True)
     _capture_cover_svg(svg_path, png_path, width, height)
     _convert_png_to_jpeg(png_path, cover_path)
+    for alias in aliases:
+        if alias == stem:
+            continue
+        alias_svg_path = output_dir / f"{alias}.svg"
+        alias_png_path = output_dir / f"{alias}.png"
+        alias_cover_path = output_dir / f"{alias}.jpg"
+        alias_svg_path.unlink(missing_ok=True)
+        alias_png_path.unlink(missing_ok=True)
+        alias_cover_path.unlink(missing_ok=True)
+        shutil.copy2(svg_path, alias_svg_path)
+        shutil.copy2(png_path, alias_png_path)
+        shutil.copy2(cover_path, alias_cover_path)
     return cover_path
 
 
@@ -539,7 +552,8 @@ def generate_cover_images(
             news or [],
             width=1920,
             height=1080,
-            stem="cover",
+            stem="cover_16x9",
+            aliases=("cover",),
         ),
         "4x3": _generate_cover_variant(
             report_id,

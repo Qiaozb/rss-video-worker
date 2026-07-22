@@ -529,10 +529,42 @@ def _enrich_tts_audio_asset(item: Dict[str, Any]) -> Dict[str, Any]:
     return item
 
 
+def _cover_16x9_fallback_paths(report_id: int) -> tuple[Path, ...]:
+    output_dir = report_output_dir(report_id)
+    return (
+        output_dir / "cover_16x9.jpg",
+        output_dir / "cover.jpg",
+    )
+
+
+def _cover_16x9_file_info(item: Dict[str, Any]) -> Dict[str, Any]:
+    cover = file_info(item.get("cover_path"))
+    if cover["exists"] or cover.get("error"):
+        return cover
+    report_id = int(item["report_id"])
+    for candidate in _cover_16x9_fallback_paths(report_id):
+        fallback = file_info(str(candidate))
+        if fallback["exists"]:
+            return fallback
+    return cover
+
+
+def _resolve_cover_16x9_path(row: Dict[str, Any], report_id: int) -> Optional[Path]:
+    if row.get("cover_path"):
+        path = safe_output_path(row.get("cover_path"))
+        if path is not None and path.exists() and path.is_file():
+            return path
+    for candidate in _cover_16x9_fallback_paths(report_id):
+        path = safe_output_path(str(candidate))
+        if path is not None and path.exists() and path.is_file():
+            return path
+    return None
+
+
 def _enrich_video_asset(item: Dict[str, Any]) -> Dict[str, Any]:
     video = file_info(item.get("video_path"))
-    cover = file_info(item.get("cover_path"))
     report_id = int(item["report_id"])
+    cover = _cover_16x9_file_info(item)
     item["video_file_exists"] = video["exists"]
     item["video_file_size_bytes"] = video["size_bytes"]
     item["video_file_size_mb"] = video["size_mb"]
@@ -2676,15 +2708,15 @@ def generate_video_cover(report_id: int) -> Dict[str, Any]:
 @app.get("/video-assets/{report_id}/cover")
 def video_cover(report_id: int):
     row = get_video_job_by_report_id(report_id)
-    if not row or not row.get("cover_path"):
+    if not row:
         raise HTTPException(status_code=404, detail="Cover not found")
     try:
-        path = safe_output_path(row.get("cover_path"))
+        path = _resolve_cover_16x9_path(row, report_id)
     except ValueError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     if path is None or not path.exists():
         raise HTTPException(status_code=404, detail="Cover file not found")
-    return FileResponse(path, media_type="image/jpeg", filename=f"game_daily_report_{report_id}_cover.jpg")
+    return FileResponse(path, media_type="image/jpeg", filename=f"game_daily_report_{report_id}_cover_16x9.jpg")
 
 
 @app.get("/video-assets/{report_id}/cover/4x3")
